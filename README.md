@@ -23,7 +23,7 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 2 | Articulaciones en Gazebo Harmonic (`gz_ros2_control`) | ✅ completada (2026-09-24) |
 | 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`), `random_driver`, joystick | ✅ completada (2026-09-24) |
 | 4 | Sensores: cámaras, profundidad, láseres, sonares | ✅ completada (2026-09-24) |
-| 5 | Mundos: oficina, museo, museo con personas | ⏳ siguiente |
+| 5 | Mundos: oficina ⏳ · museo, museo con personas y robots, museo con gente en movimiento: **pendientes** (a la espera de los archivos del V8) | 🟡 en curso |
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | pendiente |
 | 7 | Navegación con Nav2 (reemplaza amcl + move_base) | pendiente |
 | 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | pendiente |

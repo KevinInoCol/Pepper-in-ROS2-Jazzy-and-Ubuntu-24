@@ -331,10 +331,12 @@ Cambios respecto al plan del 2026-09-22:
   covarianza de odometría oculta porque el V8 usa 1e12). Launch `pepper_sensors_rviz.launch.py`.
 
 **Pendiente de respuesta del autor del V8:**
-- ¿Tiene los archivos del V8 que no están en el repo? (`museum.world`,
-  `museum_with_persons_robots`, `museum_with_people_moving.world`, launch, zip de
-  `pepper_nav`). Necesarios en las Fases 5 y 7. (`random_driver.cpp` y `joy_pepper.py`:
-  no los tiene; ya están reescritos.)
+- **PENDIENTE (2026-09-24): el autor SÍ tiene los archivos del museo y los está buscando**
+  (`museum.world`, `museum_with_persons_robots`, `museum_with_people_moving.world`, sus
+  launch, los modelos `citizen_extras_*`, `museum_for_agents_clusters.world`, los archivos
+  de pedsim y el zip de `pepper_nav`). Mientras tanto se sigue con la oficina y las
+  Fases 6 a 8; los mundos del museo se portan cuando lleguen. (`random_driver.cpp` y
+  `joy_pepper.py`: no los tiene; ya están reescritos.)
 
 ## 8. Licencias
 
