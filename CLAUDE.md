@@ -24,6 +24,12 @@ El entregable final sería un "Pepper Tutorial V9" equivalente al V8 pero en ROS
 - **Esto es un port, no una actualización.** No existe un Pepper oficial para ROS 2 + Gazebo
   moderno. Gazebo Classic está EOL desde enero de 2025.
 - **Se combinan dos repos de referencia en vez de elegir uno** (ver sección 5).
+- **Cada pieza se porta en su lenguaje original** (decidido 2026-09-24): lo que era C++ en el
+  V8 sigue en C++ (plugins de Gazebo, `random_driver.cpp` con rclcpp, `actor_collisions`), y lo
+  que era Python sigue en Python (`laser_publisher.py`, `joy_pepper.py`). Motivo: fidelidad
+  al V8 y valor docente (el tutorial enseña ROS 2 en C++ y en Python), con un coste mínimo.
+  **Excepción:** YOLO, porque `darknet_ros` (C) pasa a `yolo_ros` (Python, ultralytics).
+  Los launch se escriben en Python (`.launch.py`), no en XML.
 
 ## 2.1 REQUISITO: conservar la nomenclatura ROS 1 del V8
 
