@@ -240,8 +240,8 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 | **0. Entorno** | Instalar paquetes pendientes (§3). | `glxinfo -B` muestra la RTX 4060; `gz sim shapes.sdf` fluido. | ✅ 2026-09-24: paquetes instalados, renderer NVIDIA RTX 4060 (OpenGL 4.6), `gz sim gui` en GPU, RTF 1.00 |
 | **1. Pepper en RViz2** | Crear `~/pepper_ws`; traer URDF + mallas del repo B y portarlo a Jazzy, **ya con namespace `/pepper`** y frames del V8. `ros2_control_plugin:=fake`, sin Gazebo. | Pepper completo en RViz2, TF sin errores (incl. `WheelB/FL/FR_link`, `l/r_gripper`), `/pepper/joint_states` publicándose. | ✅ 2026-09-24 (ver abajo) |
 | **2. Articulaciones en Harmonic** | Spawn en gz-sim + `gz_ros2_control` con controladores **ya renombrados** (`LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller`). Portar `arms_down.sh`. | `ros2 topic pub /pepper/LeftArm_controller/command ...` baja el brazo; `rqt_joint_trajectory_controller` funciona. | ✅ 2026-09-24 (ver abajo) |
-| **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | 🟡 base y odometría ✅ 2026-09-24; faltan `random_driver` y `joy_pepper` |
-| **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | pendiente |
+| **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | ✅ 2026-09-24 |
+| **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | ⏳ siguiente |
 | **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | pendiente |
 | **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver`. | pendiente |
 | **7. Navegación** | Nav2 (sustituye amcl + move_base) sobre el mapa de la Fase 6. | Objetivo enviado desde RViz2 alcanzado. | pendiente |
@@ -298,12 +298,21 @@ Cambios respecto al plan del 2026-09-22:
 - Bugs del V8 corregidos: signo de `linear.y` invertido (+y iba a la derecha) y fórmula de
   arco de la odometría incorrecta para movimiento lateral con giro.
 - `rqt_robot_steering` de Jazzy tiene una casilla "stamped" (TwistStamped); por defecto
-  viene desmarcada, así que publica `Twist`, compatible con el V8.
+  viene desmarcada, así que publica `Twist`, compatible con el V8. Se cierra con SIGINT
+  (SIGTERM no basta; SIGKILL lanza el diálogo de errores de Ubuntu).
+- `random_driver.cpp` y `joy_pepper.py` del V8 **se perdieron** (el autor no los tiene):
+  están reescritos. `random_pepper_driver` (C++, rclcpp) sigue el tutorial del Husky. `joy_pepper.py`
+  (Python, en `pepper_gazebo_plugin/scripts`) usa los tres ejes: izq. Y → x, izq. X → y,
+  der. X → yaw. Launch `joy_pepper.launch.py` con `joy_node`. **Sin probar con mando real**
+  (no había ninguno conectado).
+- Para matar procesos: buscar los PID primero y matarlos por número en otro comando. Un
+  patrón de `pkill`/`awk` en la misma línea que un texto que lo contenga mata al propio shell.
 
 **Pendiente de respuesta del autor del V8:**
 - ¿Tiene los archivos del V8 que no están en el repo? (`museum.world`,
   `museum_with_persons_robots`, `museum_with_people_moving.world`, launch, zip de
-  `pepper_nav`, `random_driver.cpp`, `joy_pepper.py`). Necesarios en las Fases 3, 5 y 7.
+  `pepper_nav`). Necesarios en las Fases 5 y 7. (`random_driver.cpp` y `joy_pepper.py`:
+  no los tiene; ya están reescritos.)
 
 ## 8. Licencias
 
@@ -316,7 +325,7 @@ El paper de Heliyon pide cita explícita (`@article{sekkat2024beyond, ...}`).
 Máquina migrada a Ubuntu 24.04 nativo; repo clonado en
 `~/Proyectos-Robotica/Pepper-in-ROS2-Jazzy-and-Ubuntu-24`. Workspace `~/pepper_ws` creado; `src/pepper` es un symlink a este repo.
 Plan por fases reescrito el 2026-09-24 (§7). **Fase 0 completada** el 2026-09-24.
-**Fases 1 y 2 completadas** el 2026-09-24. Siguiente paso: **Fase 3** (base holonómica).
+**Fases 0 a 3 completadas** el 2026-09-24. Siguiente paso: **Fase 4** (sensores).
 
 `README.md` es el borrador vivo del Tutorial V9: **actualizarlo al cerrar cada fase**
 (estado + pasos reproducibles + equivalencias con el V8). Petición explícita del autor.

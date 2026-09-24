@@ -21,8 +21,8 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 0 | Entorno: paquetes, GPU, Gazebo | ✅ completada (2026-09-24) |
 | 1 | Pepper en RViz2 (URDF + mallas, sin Gazebo) | ✅ completada (2026-09-24) |
 | 2 | Articulaciones en Gazebo Harmonic (`gz_ros2_control`) | ✅ completada (2026-09-24) |
-| 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`) | 🟡 base y odometría ✅; faltan `random_driver` y joystick |
-| 4 | Sensores: cámaras, profundidad, láseres, sonares, bumpers | pendiente |
+| 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`), `random_driver`, joystick | ✅ completada (2026-09-24) |
+| 4 | Sensores: cámaras, profundidad, láseres, sonares, bumpers | ⏳ siguiente |
 | 5 | Mundos: oficina, museo, museo con personas | pendiente |
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | pendiente |
 | 7 | Navegación con Nav2 (reemplaza amcl + move_base) | pendiente |
@@ -340,6 +340,50 @@ el plugin usa `Twist`, como el V8.
 
 ![rqt_robot_steering publicando en /pepper/cmd_vel](docs/img/fase3_rqt_robot_steering.png)
 
+### `random_driver` (C++)
+
+En el V8 había que crear el paquete a mano (`catkin_create_pkg random_pepper_driver roscpp std_msgs`),
+copiar `random_driver.cpp` y editar el `CMakeLists.txt`. En el V9 el paquete
+`random_pepper_driver` ya viene en el repo:
+
+```bash
+ros2 run random_pepper_driver random_driver
+```
+
+Publica en `/pepper/cmd_vel` a 10 Hz un avance aleatorio de 0 a 1 m/s y un giro de −1 a 1 rad/s,
+como el driver del tutorial del Husky en el que se basaba el del V8. El plugin de la base
+recorta el avance a 0.55 m/s y suaviza los cambios.
+
+> El `random_driver.cpp` original del V8 se perdió. Este está reescrito a partir de la
+> descripción del V8 y del tutorial `random_husky_driver`.
+
+### Joystick (`joy_pepper.py`, Python)
+
+```bash
+ros2 launch pepper_gazebo_plugin joy_pepper.launch.py
+# Otro mando:          device_id:=1      (ver: ros2 run joy joy_enumerate_devices)
+# Botón hombre muerto: enable_button:=4  (LB del Xbox)
+```
+
+| Control (mando Xbox) | Movimiento |
+|---|---|
+| Stick izquierdo arriba/abajo | avance (`linear.x`, hasta 0.55 m/s) |
+| Stick izquierdo izquierda/derecha | lateral (`linear.y`), porque la base es holonómica |
+| Stick derecho izquierda/derecha | giro (`angular.z`, hasta 2.0 rad/s) |
+
+Diferencias con el V8:
+- En el V8 el mando se elegía con `rosparam set joy_node/dev "/dev/input/jsX"`. En ROS 2
+  `joy_node` usa SDL y se elige con `device_id`.
+- En el V8 se lanzaban `joy_node` y el script por separado. En el V9 los arranca un solo launch.
+- Alternativa estándar de ROS 2: `teleop_twist_joy`, ya instalado en la Fase 0.
+
+> El `joy_pepper.py` original también se perdió; está reescrito. Probado con mensajes
+> `/joy` simulados. **Falta probarlo con un mando real.**
+
+### Mapa 2D con pygame (`odom_graph_test.launch`)
+
+**No se porta.** En el V9, RViz2 muestra la odometría y el mapa (Fases 6 y 7).
+
 ### Verificación
 
 | Prueba | Posición real (`odom_groundtruth`) | Odometría (`odom`) |
@@ -349,6 +393,8 @@ el plugin usa `Twist`, como el V8.
 | `z = 1.0` durante 2 s | gira 138.8° | 139.1° |
 | `x = 2.0` | velocidad recortada a **0.55 m/s** | — |
 | rqt_robot_steering a 0.30 m/s | 2.05 m | 2.05 m |
+| `random_driver` durante 8 s | de (2.05, 0) a (5.03, −1.61), gira −52° | (4.99, −1.63), −53.5° |
+| `joy_pepper.py` con `/joy` simulado | stick izq. arriba + mitad izq. y stick der. mitad der. → `x=0.55`, `y=0.275`, `z=−1.0` | — |
 
 Las dos odometrías publican a 20 Hz y la TF va de `odom` hasta todos los frames del robot.
 

@@ -10,12 +10,16 @@
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <exec_depend>gazebo_model_velocity_plugin</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
   <exec_depend>gz_ros2_control</exec_depend>
+  <exec_depend>joy</exec_depend>
   <exec_depend>pepper_control</exec_depend>
   <exec_depend>pepper_description</exec_depend>
+  <exec_depend>rclpy</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>xacro</exec_depend>
 
   <export>
