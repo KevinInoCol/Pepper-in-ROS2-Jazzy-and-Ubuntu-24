@@ -66,8 +66,9 @@ Articulaciones por controlador (**idénticas en el repo B**, no hay que renombra
   Actualizar también `moveit_controller_manager.yaml` para que MoveIt los encuentre.
 - En ROS 2 el JointTrajectoryController escucha en `~/joint_trajectory`, no en `~/command`:
   remapear `~/joint_trajectory:=~/command` al lanzarlo (verificar la forma exacta en Jazzy).
-- `joint_state_broadcaster` es el equivalente de `joint_state_controller`: decidir si se le
-  pone ese nombre o se acepta el cambio (preguntar al autor).
+- **Decidido (2026-09-24):** el controlador se llama `joint_state_controller` (nombre V8),
+  con tipo `joint_state_broadcaster/JointStateBroadcaster` (su equivalente en ROS 2).
+  Documentado en la tabla de nomenclatura del README.
 - Los sensores (Fase 3) se crean directamente con estos nombres vía `ros_gz_bridge`.
 
 ## 3. Entorno verificado en esta máquina (2026-09-23)
@@ -260,7 +261,6 @@ Cambios respecto al plan del 2026-09-22:
 - ¿Tiene los archivos del V8 que no están en el repo? (`museum.world`,
   `museum_with_persons_robots`, `museum_with_people_moving.world`, launch, zip de
   `pepper_nav`, `random_driver.cpp`, `joy_pepper.py`). Necesarios en las Fases 3, 5 y 7.
-- ¿`joint_state_controller` (nombre V8) o `joint_state_broadcaster` (nombre ROS 2)?
 
 ## 8. Licencias
 

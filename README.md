@@ -31,6 +31,22 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 
 ---
 
+## Nomenclatura: V8 (ROS 1) → V9 (ROS 2)
+
+Se mantienen los nombres del V8. Cuando ROS 2 cambia algo, se conserva el **nombre** del V8
+y se indica el **tipo** equivalente de ROS 2:
+
+| Nombre (igual que en el V8) | Tipo en ROS 1 (V8) | Tipo equivalente en ROS 2 (V9) |
+|---|---|---|
+| `/pepper/joint_state_controller` | `joint_state_controller/JointStateController` | `joint_state_broadcaster/JointStateBroadcaster` |
+| `/pepper/LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller` | `velocity_controllers/JointTrajectoryController` | `joint_trajectory_controller/JointTrajectoryController` |
+
+> En ROS 2 el nodo que publica `/pepper/joint_states` se llama por defecto
+> `joint_state_broadcaster`. En el V9 se llama `joint_state_controller`, como en el V8, pero es
+> el mismo `JointStateBroadcaster` de ROS 2. El topic `/pepper/joint_states` no cambia.
+
+---
+
 ## Entorno probado
 
 | | |
