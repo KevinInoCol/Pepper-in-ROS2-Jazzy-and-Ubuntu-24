@@ -1,0 +1,246 @@
+<?xml version="1.0"?>
+<!-- SRDF de Pepper para MoveIt 2 (Tutorial V9).
+     Grupos, efectores y colisiones desactivadas del pepper_moveit_config de ros-naoqi (ROS 1,
+     JulietteY20MP.srdf), que usa los mismos nombres de links y joints que el modelo del V8.
+     Cambios: virtual joint a base_footprint (raíz del árbol del V8), grupo "pelvis" para el
+     Pelvis_controller del V8, poses con nombre (arms_down = la de arms_down.sh del V8) y sólo
+     las colisiones entre links del modelo sin dedos. -->
+<robot name="JulietteY20MP">
+    <group name="right_arm">
+        <chain base_link="torso" tip_link="r_wrist"/>
+    </group>
+    <group name="left_arm">
+        <chain base_link="torso" tip_link="l_wrist"/>
+    </group>
+    <group name="both_arms">
+        <group name="left_arm"/>
+        <group name="right_arm"/>
+    </group>
+    <group name="right_hand">
+        <joint name="RHand"/>
+    </group>
+    <group name="left_hand">
+        <joint name="LHand"/>
+    </group>
+    <group name="head">
+        <chain base_link="torso" tip_link="Head"/>
+    </group>
+    <group name="pelvis">
+        <joint name="HipRoll"/>
+        <joint name="HipPitch"/>
+        <joint name="KneePitch"/>
+    </group>
+    <group_state name="arms_down" group="left_arm">
+        <joint name="LShoulderPitch" value="1.45"/>
+        <joint name="LShoulderRoll" value="0.1"/>
+        <joint name="LElbowYaw" value="0.0"/>
+        <joint name="LElbowRoll" value="-0.1"/>
+        <joint name="LWristYaw" value="-1.0"/>
+    </group_state>
+    <group_state name="arms_down" group="right_arm">
+        <joint name="RShoulderPitch" value="1.45"/>
+        <joint name="RShoulderRoll" value="-0.1"/>
+        <joint name="RElbowYaw" value="0.0"/>
+        <joint name="RElbowRoll" value="0.1"/>
+        <joint name="RWristYaw" value="1.0"/>
+    </group_state>
+    <group_state name="arms_down" group="both_arms">
+        <joint name="LShoulderPitch" value="1.45"/>
+        <joint name="LShoulderRoll" value="0.1"/>
+        <joint name="LElbowYaw" value="0.0"/>
+        <joint name="LElbowRoll" value="-0.1"/>
+        <joint name="LWristYaw" value="-1.0"/>
+        <joint name="RShoulderPitch" value="1.45"/>
+        <joint name="RShoulderRoll" value="-0.1"/>
+        <joint name="RElbowYaw" value="0.0"/>
+        <joint name="RElbowRoll" value="0.1"/>
+        <joint name="RWristYaw" value="1.0"/>
+    </group_state>
+    <group_state name="arms_forward" group="left_arm">
+        <joint name="LShoulderPitch" value="0.0"/>
+        <joint name="LShoulderRoll" value="0.01872665"/>
+        <joint name="LElbowYaw" value="0.0"/>
+        <joint name="LElbowRoll" value="-0.01872665"/>
+        <joint name="LWristYaw" value="0.0"/>
+    </group_state>
+    <group_state name="arms_forward" group="right_arm">
+        <joint name="RShoulderPitch" value="0.0"/>
+        <joint name="RShoulderRoll" value="-0.01872665"/>
+        <joint name="RElbowYaw" value="0.0"/>
+        <joint name="RElbowRoll" value="0.01872665"/>
+        <joint name="RWristYaw" value="0.0"/>
+    </group_state>
+    <group_state name="open" group="left_hand">
+        <joint name="LHand" value="0.98"/>
+    </group_state>
+    <group_state name="closed" group="left_hand">
+        <joint name="LHand" value="0.02"/>
+    </group_state>
+    <group_state name="open" group="right_hand">
+        <joint name="RHand" value="0.98"/>
+    </group_state>
+    <group_state name="closed" group="right_hand">
+        <joint name="RHand" value="0.02"/>
+    </group_state>
+    <group_state name="center" group="head">
+        <joint name="HeadYaw" value="0.0"/>
+        <joint name="HeadPitch" value="0.0"/>
+    </group_state>
+    <group_state name="straight" group="pelvis">
+        <joint name="HipRoll" value="0.0"/>
+        <joint name="HipPitch" value="0.0"/>
+        <joint name="KneePitch" value="0.0"/>
+    </group_state>
+    <end_effector name="left_eef" parent_link="l_wrist" group="left_hand"/>
+    <end_effector name="right_eef" parent_link="r_wrist" group="right_hand"/>
+    <virtual_joint name="virtual_odom" type="floating" parent_frame="odom" child_link="base_footprint"/>
+    <disable_collisions link1="Head" link2="Hip" reason="Never"/>
+    <disable_collisions link1="Head" link2="LShoulder" reason="Never"/>
+    <disable_collisions link1="Head" link2="Neck" reason="Adjacent"/>
+    <disable_collisions link1="Head" link2="Pelvis" reason="Never"/>
+    <disable_collisions link1="Head" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="Head" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="Head" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="Head" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="Head" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="Hip" link2="LBicep" reason="Never"/>
+    <disable_collisions link1="Hip" link2="LElbow" reason="Never"/>
+    <disable_collisions link1="Hip" link2="LForeArm" reason="Never"/>
+    <disable_collisions link1="Hip" link2="LShoulder" reason="Never"/>
+    <disable_collisions link1="Hip" link2="Neck" reason="Never"/>
+    <disable_collisions link1="Hip" link2="Pelvis" reason="Adjacent"/>
+    <disable_collisions link1="Hip" link2="RBicep" reason="Never"/>
+    <disable_collisions link1="Hip" link2="RElbow" reason="Never"/>
+    <disable_collisions link1="Hip" link2="RForeArm" reason="Never"/>
+    <disable_collisions link1="Hip" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="Hip" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="Hip" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="Hip" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="Hip" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="Hip" link2="torso" reason="Adjacent"/>
+    <disable_collisions link1="LBicep" link2="LElbow" reason="Adjacent"/>
+    <disable_collisions link1="LBicep" link2="LShoulder" reason="Adjacent"/>
+    <disable_collisions link1="LBicep" link2="Neck" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="Pelvis" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="RBicep" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="RElbow" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="RForeArm" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="LBicep" link2="torso" reason="Default"/>
+    <disable_collisions link1="LElbow" link2="LForeArm" reason="Adjacent"/>
+    <disable_collisions link1="LElbow" link2="LShoulder" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="Neck" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="Pelvis" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="RBicep" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="RElbow" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="RForeArm" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="LElbow" link2="torso" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="LShoulder" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="Neck" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="Pelvis" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="RBicep" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="RElbow" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="RForeArm" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="LForeArm" link2="l_wrist" reason="Adjacent"/>
+    <disable_collisions link1="LForeArm" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="Neck" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="Pelvis" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="RBicep" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="RElbow" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="RForeArm" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="LShoulder" link2="torso" reason="Adjacent"/>
+    <disable_collisions link1="Neck" link2="Pelvis" reason="Never"/>
+    <disable_collisions link1="Neck" link2="RBicep" reason="Never"/>
+    <disable_collisions link1="Neck" link2="RElbow" reason="Never"/>
+    <disable_collisions link1="Neck" link2="RForeArm" reason="Never"/>
+    <disable_collisions link1="Neck" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="Neck" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="Neck" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="Neck" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="Neck" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="Neck" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="Neck" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="Neck" link2="torso" reason="Adjacent"/>
+    <disable_collisions link1="Pelvis" link2="RBicep" reason="Never"/>
+    <disable_collisions link1="Pelvis" link2="RElbow" reason="Never"/>
+    <disable_collisions link1="Pelvis" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="Pelvis" link2="Tibia" reason="Adjacent"/>
+    <disable_collisions link1="Pelvis" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="Pelvis" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="Pelvis" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="RBicep" link2="RElbow" reason="Adjacent"/>
+    <disable_collisions link1="RBicep" link2="RShoulder" reason="Adjacent"/>
+    <disable_collisions link1="RBicep" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="RBicep" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="RBicep" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="RBicep" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="RBicep" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="RBicep" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="RBicep" link2="torso" reason="Default"/>
+    <disable_collisions link1="RElbow" link2="RForeArm" reason="Adjacent"/>
+    <disable_collisions link1="RElbow" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="RElbow" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="RElbow" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="RElbow" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="RElbow" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="RElbow" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="RElbow" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="RElbow" link2="torso" reason="Never"/>
+    <disable_collisions link1="RForeArm" link2="RShoulder" reason="Never"/>
+    <disable_collisions link1="RForeArm" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="RForeArm" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="RForeArm" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="RForeArm" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="RForeArm" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="RForeArm" link2="r_wrist" reason="Adjacent"/>
+    <disable_collisions link1="RShoulder" link2="Tibia" reason="Never"/>
+    <disable_collisions link1="RShoulder" link2="WheelB_link" reason="Never"/>
+    <disable_collisions link1="RShoulder" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="RShoulder" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="RShoulder" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="RShoulder" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="RShoulder" link2="torso" reason="Adjacent"/>
+    <disable_collisions link1="Tibia" link2="WheelB_link" reason="Adjacent"/>
+    <disable_collisions link1="Tibia" link2="WheelFL_link" reason="Adjacent"/>
+    <disable_collisions link1="Tibia" link2="WheelFR_link" reason="Adjacent"/>
+    <disable_collisions link1="Tibia" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="Tibia" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="Tibia" link2="torso" reason="Never"/>
+    <disable_collisions link1="WheelB_link" link2="WheelFL_link" reason="Never"/>
+    <disable_collisions link1="WheelB_link" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="WheelB_link" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="WheelB_link" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="WheelB_link" link2="torso" reason="Never"/>
+    <disable_collisions link1="WheelFL_link" link2="WheelFR_link" reason="Never"/>
+    <disable_collisions link1="WheelFL_link" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="WheelFL_link" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="WheelFL_link" link2="torso" reason="Never"/>
+    <disable_collisions link1="WheelFR_link" link2="l_wrist" reason="Never"/>
+    <disable_collisions link1="WheelFR_link" link2="r_wrist" reason="Never"/>
+    <disable_collisions link1="WheelFR_link" link2="torso" reason="Never"/>
+</robot>

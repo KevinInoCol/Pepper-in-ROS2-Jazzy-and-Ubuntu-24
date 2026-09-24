@@ -1,0 +1,13 @@
+# Octomap de MoveIt con la cámara de profundidad de Pepper (sensors_xtion.yaml de ros-naoqi,
+# variante PointCloudOctomapUpdater, con el topic del V8).
+sensors:
+  - pepper_depth_camera
+pepper_depth_camera:
+  sensor_plugin: occupancy_map_monitor/PointCloudOctomapUpdater
+  point_cloud_topic: /pepper/camera/depth/points
+  max_range: 2.0
+  point_subsample: 2
+  padding_scale: 1.0
+  padding_offset: 0.1
+  max_update_rate: 5.0
+  filtered_cloud_topic: filtered_cloud

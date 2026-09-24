@@ -27,7 +27,7 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | ✅ completada (2026-09-24) |
 | 7 | Navegación con Nav2 (reemplaza amcl + move_base) | ✅ completada en la oficina (2026-09-24) |
 | 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | ✅ completada (2026-09-24) |
-| 9 | Opcionales: MoveIt 2, gente dinámica, Pepper real | opcional |
+| 9 | Opcionales: MoveIt 2 ✅ · gente dinámica y Pepper real: pendientes | 🟡 MoveIt 2 listo (2026-09-24) |
 
 ---
 
@@ -703,6 +703,55 @@ frontal, igual que en el V8), usando la GPU (PyTorch 2.14 con CUDA en la RTX 406
 
 ---
 
+## Fase 9 — MoveIt 2 (opcional)
+
+El V8 instalaba `ros-melodic-moveit*`. En el V9 el paquete `pepper_moveit_config` configura
+MoveIt 2 para Pepper con la nomenclatura del `pepper_moveit_config` de ros-naoqi (ROS 1), que
+usa los mismos nombres de links, joints y **controladores** que el V8.
+
+```bash
+sudo apt install -y ros-jazzy-moveit-ros-perception      # octomap con la cámara de profundidad
+
+# Terminal 1: simulación (vale cualquier mundo)
+ros2 launch pepper_gazebo_plugin pepper_gazebo_plugin_empty.launch.py
+# Terminal 2: MoveIt (move_group + RViz2 con MotionPlanning)
+ros2 launch pepper_moveit_config moveit_planning_execution.launch.py
+# Terminal 3 (opcional): demo por código
+ros2 run pepper_moveit_config pepper_moveit_demo.py
+```
+
+![MoveIt 2 con Pepper en RViz2](docs/img/fase9_moveit.png)
+
+### Configuración
+
+| Qué | Contenido | Origen |
+|---|---|---|
+| Grupos | `left_arm`, `right_arm`, `both_arms`, `left_hand`, `right_hand`, `head`, `pelvis` | ros-naoqi (+ `pelvis` para el `Pelvis_controller` del V8) |
+| Poses con nombre | `arms_down` (la de `arms_down.sh` del V8), `arms_forward`, manos `open`/`closed`, `head: center`, `pelvis: straight` | V8 y Sekkat |
+| Efectores finales | `left_eef` (en `l_wrist`), `right_eef` (en `r_wrist`) | ros-naoqi |
+| Colisiones desactivadas | 149 pares | ros-naoqi, filtrados a los links del modelo sin dedos |
+| Cinemática | KDL; `position_only_ik` en los brazos (5 articulaciones: no alcanzan cualquier orientación) | ros-naoqi |
+| Controladores | `pepper/LeftArm_controller`, `pepper/RightArm_controller`, `pepper/Head_controller`, `pepper/Pelvis_controller`, `pepper/LeftHand_controller`, `pepper/RightHand_controller` | V8 (en ros-naoqi con el prefijo `pepper_dcm/` del robot real) |
+| Octomap | `/pepper/camera/depth/points`, 2 m, resolución 0.025 m | `sensors_xtion.yaml` de ros-naoqi |
+
+### Verificación
+
+| Prueba | Resultado |
+|---|---|
+| Poses con nombre en los 6 grupos (brazos, cabeza, manos, `both_arms`) | ✅ SUCCESS; Gazebo sigue la trayectoria con error ≤ 0.01 rad |
+| Muñeca izquierda a un punto (IK de posición) | ✅ llega a 1.9 cm del objetivo |
+| Octomap con la cámara de profundidad | ✅ una caja delante de Pepper aparece en la escena de MoveIt |
+| `pepper_moveit_demo.py` | ✅ 7/7 movimientos |
+
+> **Limitación conocida (MoveIt 2.12.4):** si a RViz se le pasan los parámetros de cinemática,
+> el plugin MotionPlanning no carga el modelo (`is of type double, setting it to string is not
+> allowed`). Por eso RViz se lanza sin ellos: se planifica con las **poses con nombre**
+> (menú *Goal State*) o con la pestaña **Joints**, pero **no aparece el marcador para arrastrar
+> la mano**. Los objetivos cartesianos se mandan por código (`pepper_moveit_demo.py`), donde
+> funcionan con normalidad porque la IK la resuelve `move_group`.
+
+---
+
 ## Referencias
 
 - **Tutorial V8** (ROS 1): este repositorio, `Pepper Tutorial V8.docx.pdf`.
@@ -714,6 +763,8 @@ frontal, igual que en el V8), usando la GPU (PyTorch 2.14 con CUDA en la RTX 406
   Sekkat et al., *"Beyond simulation: ... Pepper open-source digital twin"*, Heliyon 10(14), 2024.
 - [`tuncismail/pepper-robot-ros2-gazebo-simulation`](https://github.com/tuncismail/pepper-robot-ros2-gazebo-simulation):
   referencia de parámetros de sensores y base.
+- [`ros-naoqi/pepper_moveit_config`](https://github.com/ros-naoqi/pepper_moveit_config): MoveIt
+  de Pepper en ROS 1, base de los grupos, colisiones, cinemática y octomap de `pepper_moveit_config`.
 - [`mgonzs13/yolo_ros`](https://github.com/mgonzs13/yolo_ros): YOLO para ROS 2 (GPL-3.0), se
   clona aparte en `~/pepper_ws/src`.
 

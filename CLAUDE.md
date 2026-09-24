@@ -246,7 +246,7 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 | **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver` (mientras llega el museo: la oficina). | ✅ 2026-09-24 con la oficina (ver abajo); museo pendiente |
 | **7. Navegación** | Nav2 (sustituye amcl + move_base) sobre el mapa de la Fase 6. | Objetivo enviado desde RViz2 alcanzado. | ✅ 2026-09-24 en la oficina (ver abajo) |
 | **8. Percepción** | `yolo_ros` (YOLOv8/v11) sobre `/pepper/camera/front/image_raw`. | Detecta personas en el mundo oficina, como la figura del V8. | ✅ 2026-09-24 (ver abajo) |
-| **9. Opcionales** | MoveIt 2 (viene en repo B; adaptar a los nombres nuevos), gente dinámica (actores / HuNavSim), Pepper real (`naoqi_driver2`). | — | opcional |
+| **9. Opcionales** | MoveIt 2 (viene en repo B; adaptar a los nombres nuevos), gente dinámica (actores / HuNavSim), Pepper real (`naoqi_driver2`). | — | 🟡 MoveIt 2 ✅ 2026-09-24 (ver abajo); el resto opcional |
 
 Cambios respecto al plan del 2026-09-22:
 1. La nomenclatura ROS 1 se aplica desde la Fase 1 (renombrar al final obligaría a tocar
@@ -384,6 +384,24 @@ base añade `share/pepper_gazebo_plugin/models` a `GZ_SIM_RESOURCE_PATH`. Valida
   darknet_ros), yolo11m, cuda:0, `image_reliability` 1, depuración activada.
 - Verificado: person 0.94 a 5 Hz en la vista inicial de la oficina.
 
+**Resultado de la Fase 9, MoveIt 2 (2026-09-24):**
+- Paquete `pepper_moveit_config` (nombre de ros-naoqi). Base: `ros-naoqi/pepper_moveit_config`
+  (ROS 1), no el de Sekkat. Sus controladores ya se llamaban como los del V8
+  (`pepper_dcm/LeftArm_controller`...); en el V9, `pepper/<X>_controller`.
+- SRDF: grupos de ros-naoqi + `pelvis`; virtual joint `odom → base_footprint`; 149 pares de
+  colisiones (los de ros-naoqi filtrados a los links sin dedos); poses `arms_down` (V8),
+  `arms_forward`, manos, cabeza, pelvis. KDL con `position_only_ik` en los brazos.
+- `moveit_planning_execution.launch.py`: MoveItConfigsBuilder, move_group con `use_sim_time`,
+  remap `joint_states → /pepper/joint_states`, octomap (`sensors_3d.yaml`, necesita
+  `ros-jazzy-moveit-ros-perception`, que el metapaquete moveit NO instala).
+- **Fallo de MoveIt 2.12.4 en RViz**: con cinemática o joint_limits como parámetros de RViz, el
+  plugin MotionPlanning no carga el modelo ("is of type double, setting it to string is not
+  allowed"), incluso con el archivo dirigido sólo al nodo `rviz` o con los valores como texto.
+  RViz va sólo con `use_sim_time` (recibe URDF/SRDF por topic de move_group): sin marcador
+  interactivo. Poses con nombre y pestaña Joints sí. Objetivos cartesianos: `scripts/pepper_moveit_demo.py`.
+- Verificado: 6 grupos a poses con nombre (error ≤ 0.01 rad en Gazebo), IK de posición a 1.9 cm,
+  octomap con la caja, demo 7/7.
+
 **Pendiente de respuesta del autor del V8:**
 - **PENDIENTE (2026-09-24): el autor SÍ tiene los archivos del museo y los está buscando**
   (`museum.world`, `museum_with_persons_robots`, `museum_with_people_moving.world`, sus
@@ -403,7 +421,7 @@ El paper de Heliyon pide cita explícita (`@article{sekkat2024beyond, ...}`).
 Máquina migrada a Ubuntu 24.04 nativo; repo clonado en
 `~/Proyectos-Robotica/Pepper-in-ROS2-Jazzy-and-Ubuntu-24`. Workspace `~/pepper_ws` creado; `src/pepper` es un symlink a este repo.
 Plan por fases reescrito el 2026-09-24 (§7). **Fase 0 completada** el 2026-09-24.
-**Fases 0 a 4 completadas** el 2026-09-24; Fase 5: oficina lista, museo pendiente. Fases 6, 7 y 8 ✅ en la oficina. Pendiente: museo (Fase 5) y opcionales (Fase 9).
+**Fases 0 a 4 completadas** el 2026-09-24; Fase 5: oficina lista, museo pendiente. Fases 6, 7 y 8 ✅ en la oficina; Fase 9: MoveIt 2 ✅. Pendiente: museo (Fase 5), gente dinámica y Pepper real (Fase 9).
 
 `README.md` es el borrador vivo del Tutorial V9: **actualizarlo al cerrar cada fase**
 (estado + pasos reproducibles + equivalencias con el V8). Petición explícita del autor.

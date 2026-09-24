@@ -1,0 +1,42 @@
+# Controladores que usa MoveIt para ejecutar trayectorias. Mismos nombres que el V8 y que el
+# controllers.yaml de ros-naoqi (allí con el prefijo pepper_dcm/ del robot real; aquí pepper/,
+# el namespace de la simulación). Acción: /pepper/<X>_controller/follow_joint_trajectory.
+moveit_controller_manager: moveit_simple_controller_manager/MoveItSimpleControllerManager
+moveit_simple_controller_manager:
+  controller_names:
+    - pepper/LeftArm_controller
+    - pepper/RightArm_controller
+    - pepper/Head_controller
+    - pepper/Pelvis_controller
+    - pepper/LeftHand_controller
+    - pepper/RightHand_controller
+  pepper/LeftArm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [LShoulderPitch, LShoulderRoll, LElbowYaw, LElbowRoll, LWristYaw]
+  pepper/RightArm_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [RShoulderPitch, RShoulderRoll, RElbowYaw, RElbowRoll, RWristYaw]
+  pepper/Head_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [HeadYaw, HeadPitch]
+  pepper/Pelvis_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [HipRoll, HipPitch, KneePitch]
+  pepper/LeftHand_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [LHand]
+  pepper/RightHand_controller:
+    type: FollowJointTrajectory
+    action_ns: follow_joint_trajectory
+    default: true
+    joints: [RHand]
