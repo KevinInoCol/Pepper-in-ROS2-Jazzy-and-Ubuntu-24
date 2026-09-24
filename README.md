@@ -26,7 +26,7 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 5 | Mundos: oficina ✅ · museo, museo con personas y robots, museo con gente en movimiento: **pendientes** (a la espera de los archivos del V8) | 🟡 oficina lista |
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | ✅ completada (2026-09-24) |
 | 7 | Navegación con Nav2 (reemplaza amcl + move_base) | ✅ completada en la oficina (2026-09-24) |
-| 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | ⏳ siguiente |
+| 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | ✅ completada (2026-09-24) |
 | 9 | Opcionales: MoveIt 2, gente dinámica, Pepper real | opcional |
 
 ---
@@ -48,6 +48,7 @@ y se indica el **tipo** equivalente de ROS 2:
 | `map_server map_saver -f` | nodo ROS 1 | `nav2_map_server map_saver_cli -f` |
 | `pepper_nav` (`amcl.launch`: amcl + move_base) | paquete ROS 1 | `pepper_nav` (`amcl.launch.py`: Nav2 con AMCL, planner, MPPI, behaviors) |
 | `/clock` de `gazebo_ros` (100 Hz, `pub_clock_frequency`) | nodo de Gazebo Classic | `clock_throttle` (C++, 100 Hz) |
+| `darknet_ros` (YOLOv2, `camera_reading: /pepper/camera/front/image_raw`) | C/C++ | `yolo_ros` (YOLO11, ultralytics) con `input_image_topic: /pepper/camera/front/image_raw` |
 | `libgazebo_ros_model_velocity.so` (`gazebo_model_velocity_plugin`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosModelVelocity`, sistema de gz-sim (C++), mismo paquete y mismos parámetros |
 | `libgazebo_ros_p3d.so` (`gazebo_plugins`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosP3D`, sistema de gz-sim (C++) |
 | `libgazebo_ros_camera.so` | plugin de cámara | sensor `camera` de gz + `ros_gz_bridge` |
@@ -641,6 +642,67 @@ Basada en la de ejemplo de Nav2 Jazzy, adaptada a Pepper:
 
 ---
 
+## Fase 8 — Percepción con YOLO
+
+`yolo_ros` (ultralytics, YOLO11) sustituye a `darknet_ros` (YOLOv2). Se instala aparte, igual
+que en el V8 se instalaba darknet_ros en su propio workspace.
+
+### Instalación (una vez)
+
+```bash
+# 1. yolo_ros junto a los paquetes de Pepper
+cd ~/pepper_ws/src
+git clone https://github.com/mgonzs13/yolo_ros.git
+
+# 2. uv (gestor de entornos de Python que recomienda yolo_ros)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 3. Entorno virtual con acceso a los paquetes de ROS (ultralytics, PyTorch con CUDA, numpy<2)
+cd ~/pepper_ws/src/yolo_ros/yolo_ros
+~/.local/bin/uv venv --python /usr/bin/python3 --system-site-packages .venv
+~/.local/bin/uv sync --no-install-project --no-dev          # ~6 GB (PyTorch con CUDA)
+
+# 4. Compilar
+cd ~/pepper_ws
+PATH=$HOME/.local/bin:$PATH colcon build --symlink-install
+```
+
+> **Por qué un entorno virtual y no `pip install --break-system-packages`:** ultralytics
+> podría actualizar numpy a la 2.x y romper `cv_bridge`, que está compilado contra la numpy
+> 1.26 del sistema. El entorno usa `rclpy` y `cv_bridge` del sistema y su propia copia de
+> PyTorch y ultralytics, sin tocar Python del sistema.
+
+### Lanzar
+
+```bash
+# Terminal 1: simulación (V8: pepper_gazebo_plugin_in_office_CPU.launch)
+ros2 launch pepper_gazebo_plugin pepper_gazebo_plugin_in_office_CPU.launch.py
+# Terminal 2: YOLO (V8: roslaunch darknet_ros darknet_ros.launch)
+ros2 launch pepper_gazebo_plugin pepper_yolo.launch.py
+#   otro modelo o umbral:  model:=yolov8m.pt threshold:=0.4
+# Ver el resultado
+ros2 run rqt_image_view rqt_image_view /yolo/dbg_image
+```
+
+Igual que en el V8, lo único que hay que cambiar es el topic de la cámara: tanto darknet_ros
+como yolo_ros escuchan por defecto en `/camera/rgb/image_raw`. `pepper_yolo.launch.py` lo pone
+en `/pepper/camera/front/image_raw`.
+
+| Topic | Contenido |
+|---|---|
+| `/yolo/detections` | `yolo_msgs/DetectionArray`: clase, confianza y caja de cada objeto |
+| `/yolo/dbg_image` | imagen de la cámara con las cajas dibujadas |
+
+![YOLO detectando a una persona en la oficina](docs/img/fase8_yolo.png)
+
+### Verificación
+
+En la posición inicial de la oficina, Pepper tiene a una persona (`male03`) a ~4.5 m delante:
+YOLO11m la detecta como **person con 0.94 de confianza**, a 5 Hz (la frecuencia de la cámara
+frontal, igual que en el V8), usando la GPU (PyTorch 2.14 con CUDA en la RTX 4060).
+
+---
+
 ## Referencias
 
 - **Tutorial V8** (ROS 1): este repositorio, `Pepper Tutorial V8.docx.pdf`.
@@ -652,6 +714,8 @@ Basada en la de ejemplo de Nav2 Jazzy, adaptada a Pepper:
   Sekkat et al., *"Beyond simulation: ... Pepper open-source digital twin"*, Heliyon 10(14), 2024.
 - [`tuncismail/pepper-robot-ros2-gazebo-simulation`](https://github.com/tuncismail/pepper-robot-ros2-gazebo-simulation):
   referencia de parámetros de sensores y base.
+- [`mgonzs13/yolo_ros`](https://github.com/mgonzs13/yolo_ros): YOLO para ROS 2 (GPL-3.0), se
+  clona aparte en `~/pepper_ws/src`.
 
 ## Licencias
 

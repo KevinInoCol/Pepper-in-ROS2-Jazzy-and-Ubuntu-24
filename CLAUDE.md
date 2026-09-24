@@ -245,7 +245,7 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 | **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | 🟡 oficina ✅ 2026-09-24; museo pendiente de los archivos del autor |
 | **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver` (mientras llega el museo: la oficina). | ✅ 2026-09-24 con la oficina (ver abajo); museo pendiente |
 | **7. Navegación** | Nav2 (sustituye amcl + move_base) sobre el mapa de la Fase 6. | Objetivo enviado desde RViz2 alcanzado. | ✅ 2026-09-24 en la oficina (ver abajo) |
-| **8. Percepción** | `yolo_ros` (YOLOv8/v11) sobre `/pepper/camera/front/image_raw`. | Detecta personas en el mundo oficina, como la figura del V8. | ⏳ siguiente |
+| **8. Percepción** | `yolo_ros` (YOLOv8/v11) sobre `/pepper/camera/front/image_raw`. | Detecta personas en el mundo oficina, como la figura del V8. | ✅ 2026-09-24 (ver abajo) |
 | **9. Opcionales** | MoveIt 2 (viene en repo B; adaptar a los nombres nuevos), gente dinámica (actores / HuNavSim), Pepper real (`naoqi_driver2`). | — | opcional |
 
 Cambios respecto al plan del 2026-09-22:
@@ -373,6 +373,17 @@ base añade `share/pepper_gazebo_plugin/models` a `GZ_SIM_RESOURCE_PATH`. Valida
 - En pruebas, los procesos que sobreviven entre lanzamientos (p. ej. dos `clock_throttle`)
   provocan "jump back in time" y fallos: comprobar que no quedan nodos viejos.
 
+**Resultado de la Fase 8 (YOLO, 2026-09-24):**
+- `yolo_ros` (mgonzs13, commit c6d29ce, ultralytics 8.4.6) clonado en `~/pepper_ws/src/yolo_ros`
+  (fuera de este repo, como dependencia externa). Python con **uv** (`~/.local/bin/uv`), en el
+  entorno virtual `yolo_ros/yolo_ros/.venv` con `--system-site-packages` (rclpy/cv_bridge del
+  sistema, numpy<2 fijado por yolo_ros). No se usó `--break-system-packages`, para no romper cv_bridge.
+  Compilar con `~/.local/bin` en el PATH; los nodos usan el Python del entorno (shebang del entorno).
+- `pepper_gazebo_plugin/launch/pepper_yolo.launch.py`: incluye `yolo_bringup/yolo.launch.py`
+  con `input_image_topic:=/pepper/camera/front/image_raw` (mismo cambio que el V8 hacía en
+  darknet_ros), yolo11m, cuda:0, `image_reliability` 1, depuración activada.
+- Verificado: person 0.94 a 5 Hz en la vista inicial de la oficina.
+
 **Pendiente de respuesta del autor del V8:**
 - **PENDIENTE (2026-09-24): el autor SÍ tiene los archivos del museo y los está buscando**
   (`museum.world`, `museum_with_persons_robots`, `museum_with_people_moving.world`, sus
@@ -392,7 +403,7 @@ El paper de Heliyon pide cita explícita (`@article{sekkat2024beyond, ...}`).
 Máquina migrada a Ubuntu 24.04 nativo; repo clonado en
 `~/Proyectos-Robotica/Pepper-in-ROS2-Jazzy-and-Ubuntu-24`. Workspace `~/pepper_ws` creado; `src/pepper` es un symlink a este repo.
 Plan por fases reescrito el 2026-09-24 (§7). **Fase 0 completada** el 2026-09-24.
-**Fases 0 a 4 completadas** el 2026-09-24; Fase 5: oficina lista, museo pendiente. Fases 6 y 7 ✅ en la oficina. Siguiente paso: **Fase 8** (YOLO).
+**Fases 0 a 4 completadas** el 2026-09-24; Fase 5: oficina lista, museo pendiente. Fases 6, 7 y 8 ✅ en la oficina. Pendiente: museo (Fase 5) y opcionales (Fase 9).
 
 `README.md` es el borrador vivo del Tutorial V9: **actualizarlo al cerrar cada fase**
 (estado + pasos reproducibles + equivalencias con el V8). Petición explícita del autor.
