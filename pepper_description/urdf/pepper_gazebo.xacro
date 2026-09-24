@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<!-- Plugins de Gazebo Harmonic para Pepper (equivale a las partes no-ros_control de
+     pepperGazeboCPU.xacro del V8). Parámetros copiados del V8. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- La base se mueve fijando la velocidad del modelo, como en el V8: el bloque de la base
+       (Tibia) no rueda: con fricción, el roce con el suelo frena el giro (~35% menos de lo
+       pedido). Con fricción cero el robot sigue el comando, como el SetLinearVel del V8. -->
+  <gazebo reference="Tibia">
+    <mu1>0.0</mu1>
+    <mu2>0.0</mu2>
+  </gazebo>
+
+  <!-- Drive controller (V8: libgazebo_ros_model_velocity.so) -->
+  <gazebo>
+    <plugin filename="gazebo_ros_model_velocity"
+            name="gazebo_model_velocity_plugin::GazeboRosModelVelocity">
+      <robotNamespace>/pepper</robotNamespace>
+      <commandTopic>cmd_vel</commandTopic>
+      <outputVelocityTopic>output_vel</outputVelocityTopic>
+      <updateRate>50.0</updateRate>
+      <commandTimeout>0.5</commandTimeout>
+      <!-- Publish odometry as needed -->
+      <odometryTopic>odom</odometryTopic>
+      <odometryFrame>odom</odometryFrame>
+      <odometryRate>20.0</odometryRate>
+      <publishOdometryTf>true</publishOdometryTf>
+      <robotBaseFrame>base_footprint</robotBaseFrame>
+      <!-- As measured in real robot odom_alpha3 and odom_alpha1 -->
+      <gaussianNoiseXY>0.02</gaussianNoiseXY>
+      <gaussianNoiseYaw>0.02645</gaussianNoiseYaw>
+      <!-- To simulate closer to the real robot we modified the theoretical limits -->
+      <linearVelocityLimit>${0.55 * 1.0}</linearVelocityLimit>
+      <angularVelocityLimit>${2.0 * 1.0}</angularVelocityLimit>
+      <linearAccelerationLimit>${0.55 * 0.8}</linearAccelerationLimit>
+      <angularAccelerationLimit>${3.0 * 0.8}</angularAccelerationLimit>
+      <linearJerkLimit>${5.0 * 0.9}</linearJerkLimit>
+      <angularJerkLimit>${50.0 * 0.9}</angularJerkLimit>
+    </plugin>
+  </gazebo>
+
+  <!-- Ground truth (V8: libgazebo_ros_p3d.so) -->
+  <gazebo>
+    <plugin filename="gazebo_ros_p3d" name="gazebo_model_velocity_plugin::GazeboRosP3D">
+      <frameName>world</frameName>
+      <bodyName>base_footprint</bodyName>
+      <topicName>/pepper/odom_groundtruth</topicName>
+      <updateRate>20.0</updateRate>
+    </plugin>
+  </gazebo>
+</robot>

@@ -176,8 +176,11 @@ Apunta a **Galactic + Fortress**; último push sep-2024, 10 estrellas, sin mante
    es **holonómico**. Las ruedas están además comentadas fuera de `ros2_control`.
 3. **Herencia muerta de Gazebo Classic.** El macro `gazebo_misc_references` define
    `mu1/mu2/kp/kd/fdir1/minDepth/turnGravityOff/selfCollide` para ~50 links: son
-   extensiones URDF de Classic que **gz-sim ignora**. La fricción de las ruedas que
-   *parece* configurada no hace nada (y encima es inconsistente entre WheelFL y WheelFR).
+   extensiones URDF de Classic. **Corrección (2026-09-24, verificado con `gz sdf -p`):**
+   el conversor URDF→SDF de sdformat **sí** traduce `mu1`/`mu2` a `<surface><friction>`,
+   incluso en colisiones fusionadas por fixed joints. El resto (`turnGravityOff`,
+   `selfCollide`...) no se ha verificado. En Sekkat la fricción de las ruedas es además
+   inconsistente entre WheelFL y WheelFR.
 
 Alcance: es un repo de **manipulación**, no de navegación. Sin Nav2, sin SLAM,
 sin mundos tipo museo (solo `follow_target.sdf`), sin YOLO.
@@ -237,7 +240,7 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 | **0. Entorno** | Instalar paquetes pendientes (§3). | `glxinfo -B` muestra la RTX 4060; `gz sim shapes.sdf` fluido. | ✅ 2026-09-24: paquetes instalados, renderer NVIDIA RTX 4060 (OpenGL 4.6), `gz sim gui` en GPU, RTF 1.00 |
 | **1. Pepper en RViz2** | Crear `~/pepper_ws`; traer URDF + mallas del repo B y portarlo a Jazzy, **ya con namespace `/pepper`** y frames del V8. `ros2_control_plugin:=fake`, sin Gazebo. | Pepper completo en RViz2, TF sin errores (incl. `WheelB/FL/FR_link`, `l/r_gripper`), `/pepper/joint_states` publicándose. | ✅ 2026-09-24 (ver abajo) |
 | **2. Articulaciones en Harmonic** | Spawn en gz-sim + `gz_ros2_control` con controladores **ya renombrados** (`LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller`). Portar `arms_down.sh`. | `ros2 topic pub /pepper/LeftArm_controller/command ...` baja el brazo; `rqt_joint_trajectory_controller` funciona. | ✅ 2026-09-24 (ver abajo) |
-| **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | ⏳ siguiente |
+| **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | 🟡 base y odometría ✅ 2026-09-24; faltan `random_driver` y `joy_pepper` |
 | **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | pendiente |
 | **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | pendiente |
 | **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver`. | pendiente |
@@ -279,6 +282,23 @@ Cambios respecto al plan del 2026-09-22:
 - Verificación de GUI sin xdotool: clics y arrastres con `libXtst` vía ctypes, y capturas con
   `Gdk.pixbuf_get_from_window` (scripts temporales de la sesión; se rehacen en pocas líneas). Para parar la simulación no usar `pkill -f <patrón>` dentro de un comando
   que contenga ese patrón, porque se mata a sí mismo.
+
+**Resultado de la Fase 3 (base y odometría, 2026-09-24):**
+- Paquete C++ `gazebo_model_velocity_plugin` (mismo nombre que en el V8) con dos sistemas
+  de gz-sim que hablan ROS 2 directamente (rclcpp dentro del plugin, como el original):
+  `GazeboRosModelVelocity` (port del plugin de awesomebytes: mismos parámetros SDF,
+  limitador de velocidad, aceleración y jerk, timeout, odometría con ruido integrada y TF
+  `odom → base_footprint`) y `GazeboRosP3D` (equivale a `libgazebo_ros_p3d.so`:
+  `/pepper/odom_groundtruth`). Un hook añade `lib/` a `GZ_SIM_SYSTEM_PLUGIN_PATH`.
+  Bloques SDF en `pepper_description/urdf/pepper_gazebo.xacro`, copiados del V8.
+- **La física de gz-sim descarta `LinearVelocityCmd`/`AngularVelocityCmd` del modelo tras
+  cada paso**: hay que reaplicarlos en todos los PreUpdate. Aplicándolos solo a
+  `<updateRate>` (50 Hz con pasos de 1 ms) el robot se movía 1/20 de lo pedido.
+- Fricción 0 en la colisión de `Tibia` (`mu1`/`mu2`). Sin ella, el roce reduce el giro ~35%.
+- Bugs del V8 corregidos: signo de `linear.y` invertido (+y iba a la derecha) y fórmula de
+  arco de la odometría incorrecta para movimiento lateral con giro.
+- `rqt_robot_steering` de Jazzy tiene una casilla "stamped" (TwistStamped); por defecto
+  viene desmarcada, así que publica `Twist`, compatible con el V8.
 
 **Pendiente de respuesta del autor del V8:**
 - ¿Tiene los archivos del V8 que no están en el repo? (`museum.world`,

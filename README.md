@@ -21,7 +21,7 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 0 | Entorno: paquetes, GPU, Gazebo | ✅ completada (2026-09-24) |
 | 1 | Pepper en RViz2 (URDF + mallas, sin Gazebo) | ✅ completada (2026-09-24) |
 | 2 | Articulaciones en Gazebo Harmonic (`gz_ros2_control`) | ✅ completada (2026-09-24) |
-| 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`) | ⏳ siguiente |
+| 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`) | 🟡 base y odometría ✅; faltan `random_driver` y joystick |
 | 4 | Sensores: cámaras, profundidad, láseres, sonares, bumpers | pendiente |
 | 5 | Mundos: oficina, museo, museo con personas | pendiente |
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | pendiente |
@@ -44,6 +44,8 @@ y se indica el **tipo** equivalente de ROS 2:
 | `/pepper/<X>_controller/command` | topic nativo del controlador | el nativo en ROS 2 es `~/joint_trajectory`; se remapea a `~/command` |
 | `gazebo_ros_control` (`libgazebo_ros_control.so`) | plugin de Gazebo Classic | `gz_ros2_control::GazeboSimROS2ControlPlugin` |
 | `pepperTransmission.xacro` | `<transmission>` | bloque `<ros2_control>` (`pepper_ros2_control.xacro`) |
+| `libgazebo_ros_model_velocity.so` (`gazebo_model_velocity_plugin`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosModelVelocity`, sistema de gz-sim (C++), mismo paquete y mismos parámetros |
+| `libgazebo_ros_p3d.so` (`gazebo_plugins`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosP3D`, sistema de gz-sim (C++) |
 
 > En ROS 2 el nodo que publica `/pepper/joint_states` se llama por defecto
 > `joint_state_broadcaster`. En el V9 se llama `joint_state_controller`, como en el V8, pero es
@@ -289,6 +291,75 @@ mueven los sliders.
 | Masa/inercia de `l_gripper`, `r_gripper` | 2e-06 kg / 1.1e-09 | 0.05 kg / 1e-05 | El motor de física de Harmonic (DART) **aborta** (`dLDLTRemove` en el solver LCP) con cuerpos tan ligeros colgando de un joint móvil. En Gazebo Classic (ODE) funcionaba |
 | Posición inicial de `LHand`, `RHand` | 0 | 0.5 | El límite del joint es 0.02–0.98; empezar en 0 lo deja fuera de rango |
 | Ruedas en ros2_control | — | no incluidas | La base se mueve con su propio plugin, como en el V8 (Fase 3) |
+
+---
+
+## Fase 3 — Base holonómica y odometría
+
+Pepper se mueve con `/pepper/cmd_vel` como en el V8: avanza, se desplaza en lateral y gira,
+todo a la vez.
+
+### Paquete `gazebo_model_velocity_plugin` (C++)
+
+Mismo nombre que el plugin que el V8 clonaba de `awesomebytes/gazebo_model_velocity_plugin`,
+portado a Gazebo Harmonic. Ya **no hace falta el parche manual** del V8
+(`math::Vector3` → `ignition::math::Vector3d` en las líneas 394–395).
+
+| Plugin | Topics | Equivale en el V8 a |
+|---|---|---|
+| `GazeboRosModelVelocity` | sub `/pepper/cmd_vel` · pub `/pepper/odom`, `/pepper/output_vel`, TF `odom → base_footprint` | `libgazebo_ros_model_velocity.so` |
+| `GazeboRosP3D` | pub `/pepper/odom_groundtruth` (frame `world`) | `libgazebo_ros_p3d.so` |
+
+Los bloques `<plugin>` están en `pepper_description/urdf/pepper_gazebo.xacro` con **los
+mismos parámetros que `pepperGazeboCPU.xacro` del V8**: límites de 0.55 m/s y 2.0 rad/s,
+aceleración 0.44 m/s² y 2.4 rad/s², jerk, timeout de 0.5 s, odometría a 20 Hz y ruido gaussiano
+medido en el robot real (0.02 en XY, 0.02645 en yaw).
+
+La odometría se calcula como en el V8: se integra la velocidad medida más ruido, así que
+**acumula deriva** como la de un robot real. `/pepper/odom_groundtruth` da la posición exacta
+para comparar.
+
+### Mover a Pepper
+
+Terminal (igual que el V8):
+
+```bash
+ros2 topic pub /pepper/cmd_vel geometry_msgs/msg/Twist \
+  "{linear: {x: 0.5, y: 0.0, z: 0.0}, angular: {x: 0.0, y: 0.0, z: 0.0}}" -r 10
+```
+
+Con rqt (igual que el V8):
+
+```bash
+ros2 run rqt_robot_steering rqt_robot_steering
+```
+
+Escribir `/pepper/cmd_vel` en el campo del topic y pulsar Enter. La casilla **stamped** debe
+quedar **desmarcada**: en Jazzy rqt_robot_steering también puede publicar `TwistStamped`, y
+el plugin usa `Twist`, como el V8.
+
+![rqt_robot_steering publicando en /pepper/cmd_vel](docs/img/fase3_rqt_robot_steering.png)
+
+### Verificación
+
+| Prueba | Posición real (`odom_groundtruth`) | Odometría (`odom`) |
+|---|---|---|
+| `x = 0.3` durante 3 s | avanza 1.02 m | 1.01 m |
+| `y = 0.3` durante 3 s | 1.04 m **a la izquierda** | 1.05 m |
+| `z = 1.0` durante 2 s | gira 138.8° | 139.1° |
+| `x = 2.0` | velocidad recortada a **0.55 m/s** | — |
+| rqt_robot_steering a 0.30 m/s | 2.05 m | 2.05 m |
+
+Las dos odometrías publican a 20 Hz y la TF va de `odom` hasta todos los frames del robot.
+
+### Cambios respecto al V8
+
+| Qué | V8 | V9 | Por qué |
+|---|---|---|---|
+| Signo de `linear.y` | invertido: `+y` movía a Pepper a su **derecha** | `+y` = izquierda | Convención de ROS (REP 103). Bug del plugin original |
+| Integración de la odometría | fórmula de arco que suma `vx + vy` | integración con el punto medio del giro | La fórmula original falla al moverse en lateral mientras gira |
+| Fricción de la base (`Tibia`) | por defecto | `mu1 = mu2 = 0` | La base no rueda: se fija su velocidad, como en el V8. Con fricción, el roce con el suelo reduce el giro ~35% |
+| Aplicación del comando | en cada actualización (50 Hz) | en cada paso de física (1 kHz), con el limitador a 50 Hz | Gazebo Harmonic descarta el comando de velocidad tras cada paso |
 
 ---
 
