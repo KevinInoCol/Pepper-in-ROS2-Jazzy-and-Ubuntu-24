@@ -242,8 +242,8 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 | **2. Articulaciones en Harmonic** | Spawn en gz-sim + `gz_ros2_control` con controladores **ya renombrados** (`LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller`). Portar `arms_down.sh`. | `ros2 topic pub /pepper/LeftArm_controller/command ...` baja el brazo; `rqt_joint_trajectory_controller` funciona. | ✅ 2026-09-24 (ver abajo) |
 | **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | ✅ 2026-09-24 |
 | **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | ✅ 2026-09-24 (ver abajo) |
-| **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | ⏳ siguiente |
-| **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver`. | pendiente |
+| **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | 🟡 oficina ✅ 2026-09-24; museo pendiente de los archivos del autor |
+| **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver` (mientras llega el museo: la oficina). | ⏳ siguiente |
 | **7. Navegación** | Nav2 (sustituye amcl + move_base) sobre el mapa de la Fase 6. | Objetivo enviado desde RViz2 alcanzado. | pendiente |
 | **8. Percepción** | `yolo_ros` (YOLOv8/v11) sobre `/pepper/camera/front/image_raw`. | Detecta personas en el mundo oficina, como la figura del V8. | pendiente |
 | **9. Opcionales** | MoveIt 2 (viene en repo B; adaptar a los nombres nuevos), gente dinámica (actores / HuNavSim), Pepper real (`naoqi_driver2`). | — | opcional |
@@ -330,6 +330,15 @@ Cambios respecto al plan del 2026-09-22:
 - RViz2: `pepper_gazebo_plugin/config/pepper_sensors.rviz` (mismos displays que el del V8;
   covarianza de odometría oculta porque el V8 usa 1e12). Launch `pepper_sensors_rviz.launch.py`.
 
+**Resultado de la Fase 5, oficina (2026-09-24):** `pepper_gazebo_plugin/worlds/simple_office_with_people.world`
+y `models/` copiados de `pepper_virtual`. Cambios: sol y suelo en el propio mundo (`model://sun`
+y `model://ground_plane` eran internos de Classic), sistemas de gz-sim, materiales `Gazebo/*`
+cambiados por colores, paredes gris claro (sin material salen oscuras), personas `static`
+(masa 20 kg con inercia 0), `version="1.4"` en los `model.config` (sdformat 14 lo exige).
+Launch `pepper_gazebo_plugin_in_office_CPU.launch.py` (spawn en −0.5, 1, como el V8). El launch
+base añade `share/pepper_gazebo_plugin/models` a `GZ_SIM_RESOURCE_PATH`. Validar mundos con
+`SDF_PATH=<models> gz sdf -k <world>` (la CLI usa `SDF_PATH`, no `GZ_SIM_RESOURCE_PATH`).
+
 **Pendiente de respuesta del autor del V8:**
 - **PENDIENTE (2026-09-24): el autor SÍ tiene los archivos del museo y los está buscando**
   (`museum.world`, `museum_with_persons_robots`, `museum_with_people_moving.world`, sus
@@ -349,7 +358,7 @@ El paper de Heliyon pide cita explícita (`@article{sekkat2024beyond, ...}`).
 Máquina migrada a Ubuntu 24.04 nativo; repo clonado en
 `~/Proyectos-Robotica/Pepper-in-ROS2-Jazzy-and-Ubuntu-24`. Workspace `~/pepper_ws` creado; `src/pepper` es un symlink a este repo.
 Plan por fases reescrito el 2026-09-24 (§7). **Fase 0 completada** el 2026-09-24.
-**Fases 0 a 4 completadas** el 2026-09-24. Siguiente paso: **Fase 5** (mundos).
+**Fases 0 a 4 completadas** el 2026-09-24; Fase 5: oficina lista, museo pendiente. Siguiente paso: **Fase 6** (SLAM en la oficina).
 
 `README.md` es el borrador vivo del Tutorial V9: **actualizarlo al cerrar cada fase**
 (estado + pasos reproducibles + equivalencias con el V8). Petición explícita del autor.

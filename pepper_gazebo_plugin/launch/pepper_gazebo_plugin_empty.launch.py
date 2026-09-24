@@ -6,7 +6,8 @@ lanza laser_publisher.py (/pepper/laser_2) y sonar_to_range (/pepper/sonar_*).
 """
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, RegisterEventHandler
+from launch.actions import (AppendEnvironmentVariable, DeclareLaunchArgument,
+                            IncludeLaunchDescription, RegisterEventHandler)
 from launch.event_handlers import OnProcessExit
 from launch.substitutions import Command, LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
@@ -76,7 +77,13 @@ def generate_launch_description():
         parameters=[{"use_sim_time": True}],
     )
 
+    # V8: <env name="GAZEBO_MODEL_PATH" value="$(find pepper_gazebo_plugin)/models:..."/>
+    model_path = AppendEnvironmentVariable(
+        "GZ_SIM_RESOURCE_PATH",
+        PathJoinSubstitution([FindPackageShare("pepper_gazebo_plugin"), "models"]))
+
     return LaunchDescription([
+        model_path,
         DeclareLaunchArgument("world", default_value=PathJoinSubstitution(
             [FindPackageShare("pepper_gazebo_plugin"), "worlds", "empty.world"])),
         DeclareLaunchArgument("x", default_value="0.0"),

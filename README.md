@@ -23,8 +23,8 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 2 | Articulaciones en Gazebo Harmonic (`gz_ros2_control`) | ✅ completada (2026-09-24) |
 | 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`), `random_driver`, joystick | ✅ completada (2026-09-24) |
 | 4 | Sensores: cámaras, profundidad, láseres, sonares | ✅ completada (2026-09-24) |
-| 5 | Mundos: oficina ⏳ · museo, museo con personas y robots, museo con gente en movimiento: **pendientes** (a la espera de los archivos del V8) | 🟡 en curso |
-| 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | pendiente |
+| 5 | Mundos: oficina ✅ · museo, museo con personas y robots, museo con gente en movimiento: **pendientes** (a la espera de los archivos del V8) | 🟡 oficina lista |
+| 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | ⏳ siguiente |
 | 7 | Navegación con Nav2 (reemplaza amcl + move_base) | pendiente |
 | 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | pendiente |
 | 9 | Opcionales: MoveIt 2, gente dinámica, Pepper real | opcional |
@@ -482,6 +482,42 @@ Dependencia nueva: `sudo apt install ros-jazzy-depth-image-proc`.
 | Sonar | ray + `libgazebo_ros_range.so` | lidar 5×5 + `sonar_to_range` | Gazebo Harmonic no tiene ultrasonido |
 | TF de las ruedas | había que comentar líneas para evitar errores en RViz | las ruedas se publican (ros2_control sólo con estado) | Corrige el "Rviz Model Robot Erro" del V8 |
 | Covarianza en RViz | no se dibujaba | oculta en la config | RViz2 la dibuja por defecto y la del V8 (1e12) llena la pantalla |
+
+---
+
+## Fase 5 — Mundos
+
+### Oficina con personas ✅
+
+Equivale a `roslaunch pepper_gazebo_plugin pepper_gazebo_plugin_in_office_CPU.launch` del V8:
+
+```bash
+ros2 launch pepper_gazebo_plugin pepper_gazebo_plugin_in_office_CPU.launch.py
+```
+
+Mismo mundo (`worlds/simple_office_with_people.world`), mismos modelos (`models/`: bench,
+closet, dining_chair, floor_lamp, kitchen_table, sofa, wardrobe y tres `citizen_extras_*`) y
+Pepper aparece en la misma posición inicial, (−0.5, 1).
+
+![Oficina en Gazebo Harmonic](docs/img/fase5_oficina.png)
+
+Cambios necesarios para Gazebo Harmonic:
+
+| Qué | V8 (Gazebo Classic) | V9 (Gazebo Harmonic) |
+|---|---|---|
+| Sol y suelo | `model://sun`, `model://ground_plane` (internos de Classic) | definidos en el propio mundo |
+| Física | `<physics type="ode">` | sistemas de gz-sim (Physics, Sensors, SceneBroadcaster, UserCommands) |
+| Materiales de los muebles | scripts `Gazebo/Wood`, `Gazebo/Grey`... | colores equivalentes (Harmonic no lee scripts de OGRE) |
+| Paredes | sin material (gris claro en Classic) | gris claro explícito (sin él, Harmonic las muestra oscuras) |
+| Personas | masa 20 kg, inercia 0, no estáticas | estáticas (DART no admite inercia 0); siguen de pie, igual que en el V8 |
+| `model.config` | `<sdf>model.sdf</sdf>` | `<sdf version="1.4">…`: sdformat 14 exige la versión |
+| Ruta de modelos | `<env name="GAZEBO_MODEL_PATH" …>` en el launch | `GZ_SIM_RESOURCE_PATH` en el launch |
+
+### Museo ⏳ pendiente
+
+`museum.world`, `museum_with_persons_robots`, `museum_with_people_moving.world` (actores con
+`actor_collisions`) y `museum_for_agents_clusters.world` (pedsim) se portarán cuando estén
+disponibles los archivos del V8.
 
 ---
 
