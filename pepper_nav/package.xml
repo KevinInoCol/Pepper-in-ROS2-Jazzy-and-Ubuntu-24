@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypelocation="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>pepper_nav</name>
+  <version>0.2.0</version>
+  <description>Navegación de Pepper con Nav2 (Tutorial V9). Sustituye a amcl + move_base del pepper_nav del V8.</description>
+  <maintainer email="kevin.inofuente.colque.27@gmail.com">KevinInoCol</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_common</exec_depend>
+  <exec_depend>navigation2</exec_depend>
+  <exec_depend>pepper_gazebo_plugin</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

@@ -2,7 +2,9 @@
 # En el V8 cada plugin de Gazebo Classic publicaba directamente en ROS; en Gazebo Harmonic
 # los sensores publican en Gazebo y este puente los pasa a ROS 2.
 
-- ros_topic_name: /clock
+# El reloj de Gazebo (1 kHz) va a /pepper/clock_raw; clock_throttle lo publica en /clock a
+# 100 Hz, como gazebo_ros en ROS 1 (pub_clock_frequency = 100).
+- ros_topic_name: /pepper/clock_raw
   gz_topic_name: /clock
   ros_type_name: rosgraph_msgs/msg/Clock
   gz_type_name: gz.msgs.Clock

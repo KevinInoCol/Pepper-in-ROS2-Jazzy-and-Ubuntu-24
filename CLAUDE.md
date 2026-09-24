@@ -244,8 +244,8 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 | **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | ✅ 2026-09-24 (ver abajo) |
 | **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | 🟡 oficina ✅ 2026-09-24; museo pendiente de los archivos del autor |
 | **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver` (mientras llega el museo: la oficina). | ✅ 2026-09-24 con la oficina (ver abajo); museo pendiente |
-| **7. Navegación** | Nav2 (sustituye amcl + move_base) sobre el mapa de la Fase 6. | Objetivo enviado desde RViz2 alcanzado. | ⏳ siguiente |
-| **8. Percepción** | `yolo_ros` (YOLOv8/v11) sobre `/pepper/camera/front/image_raw`. | Detecta personas en el mundo oficina, como la figura del V8. | pendiente |
+| **7. Navegación** | Nav2 (sustituye amcl + move_base) sobre el mapa de la Fase 6. | Objetivo enviado desde RViz2 alcanzado. | ✅ 2026-09-24 en la oficina (ver abajo) |
+| **8. Percepción** | `yolo_ros` (YOLOv8/v11) sobre `/pepper/camera/front/image_raw`. | Detecta personas en el mundo oficina, como la figura del V8. | ⏳ siguiente |
 | **9. Opcionales** | MoveIt 2 (viene en repo B; adaptar a los nombres nuevos), gente dinámica (actores / HuNavSim), Pepper real (`naoqi_driver2`). | — | opcional |
 
 Cambios respecto al plan del 2026-09-22:
@@ -354,6 +354,25 @@ base añade `share/pepper_gazebo_plugin/models` a `GZ_SIM_RESOURCE_PATH`. Valida
   sesión, no en el repo. `map_saver_cli` a veces agota la espera del `/map` al primer intento:
   repetir.
 
+**Resultado de la Fase 7 (Nav2, 2026-09-24):**
+- Paquete `pepper_nav` (nombre del V8, su contenido original está en el zip pendiente):
+  `config/nav2_params.yaml` (derivado del de ejemplo de nav2_bringup Jazzy), `launch/amcl.launch.py`
+  (bringup_launch.py + RewrittenYaml para `scan_topic`/`topic` según el arg `scan`, más RViz2) y
+  `rviz/pepper_nav.rviz` (nav2_default_view con los topics de Pepper).
+- La salida final de Nav2 la publica `collision_monitor` en `cmd_vel_out_topic` = `/pepper/cmd_vel`.
+- **MPPI con `ax_max` 0.44 no pasa de 0.1 m/s**: recorta el ruido de muestreo. Aceleraciones por
+  defecto en MPPI; los límites los aplican `velocity_smoother` y el plugin de la base.
+- **`/clock` de gz a 1 kHz satura la máquina con Nav2** (~40 suscriptores, carga 17/12 hilos).
+  Nodo C++ `pepper_gazebo_plugin/clock_throttle`: el puente pasa el reloj a `/pepper/clock_raw` y
+  el nodo publica `/clock` a 100 Hz (como `pub_clock_frequency` de gazebo_ros en ROS 1).
+- Puerta de 0.95 m: radio 0.24, inflación local 0.35/caída 10, `movement_time_allowance` 20 s.
+- El mapa `office` se rehízo con SLAM desde el arranque: así `map` = mundo + (0.5, −1) y AMCL
+  arranca en (0,0). El primer mapa se hizo con SLAM arrancado tras otro recorrido y arrastraba deriva.
+- Pruebas: 3/3 objetivos (puerta 33 s), error de AMCL 0.14 m. Con `laser_2`, 2/2 pero con peor
+  localización (hasta 0.85 m).
+- En pruebas, los procesos que sobreviven entre lanzamientos (p. ej. dos `clock_throttle`)
+  provocan "jump back in time" y fallos: comprobar que no quedan nodos viejos.
+
 **Pendiente de respuesta del autor del V8:**
 - **PENDIENTE (2026-09-24): el autor SÍ tiene los archivos del museo y los está buscando**
   (`museum.world`, `museum_with_persons_robots`, `museum_with_people_moving.world`, sus
@@ -373,7 +392,7 @@ El paper de Heliyon pide cita explícita (`@article{sekkat2024beyond, ...}`).
 Máquina migrada a Ubuntu 24.04 nativo; repo clonado en
 `~/Proyectos-Robotica/Pepper-in-ROS2-Jazzy-and-Ubuntu-24`. Workspace `~/pepper_ws` creado; `src/pepper` es un symlink a este repo.
 Plan por fases reescrito el 2026-09-24 (§7). **Fase 0 completada** el 2026-09-24.
-**Fases 0 a 4 completadas** el 2026-09-24; Fase 5: oficina lista, museo pendiente. Fase 6 ✅ (SLAM en la oficina). Siguiente paso: **Fase 7** (Nav2 en la oficina).
+**Fases 0 a 4 completadas** el 2026-09-24; Fase 5: oficina lista, museo pendiente. Fases 6 y 7 ✅ en la oficina. Siguiente paso: **Fase 8** (YOLO).
 
 `README.md` es el borrador vivo del Tutorial V9: **actualizarlo al cerrar cada fase**
 (estado + pasos reproducibles + equivalencias con el V8). Petición explícita del autor.

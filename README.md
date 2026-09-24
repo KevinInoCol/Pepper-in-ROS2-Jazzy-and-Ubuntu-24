@@ -25,8 +25,8 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 4 | Sensores: cámaras, profundidad, láseres, sonares | ✅ completada (2026-09-24) |
 | 5 | Mundos: oficina ✅ · museo, museo con personas y robots, museo con gente en movimiento: **pendientes** (a la espera de los archivos del V8) | 🟡 oficina lista |
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | ✅ completada (2026-09-24) |
-| 7 | Navegación con Nav2 (reemplaza amcl + move_base) | ⏳ siguiente |
-| 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | pendiente |
+| 7 | Navegación con Nav2 (reemplaza amcl + move_base) | ✅ completada en la oficina (2026-09-24) |
+| 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | ⏳ siguiente |
 | 9 | Opcionales: MoveIt 2, gente dinámica, Pepper real | opcional |
 
 ---
@@ -46,6 +46,8 @@ y se indica el **tipo** equivalente de ROS 2:
 | `pepperTransmission.xacro` | `<transmission>` | bloque `<ros2_control>` (`pepper_ros2_control.xacro`) |
 | `slam_gmapping` (`rosrun gmapping slam_gmapping scan:=...`) | nodo ROS 1 | `slam_toolbox` (`pepper_slam_toolbox.launch.py scan:=...`) |
 | `map_server map_saver -f` | nodo ROS 1 | `nav2_map_server map_saver_cli -f` |
+| `pepper_nav` (`amcl.launch`: amcl + move_base) | paquete ROS 1 | `pepper_nav` (`amcl.launch.py`: Nav2 con AMCL, planner, MPPI, behaviors) |
+| `/clock` de `gazebo_ros` (100 Hz, `pub_clock_frequency`) | nodo de Gazebo Classic | `clock_throttle` (C++, 100 Hz) |
 | `libgazebo_ros_model_velocity.so` (`gazebo_model_velocity_plugin`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosModelVelocity`, sistema de gz-sim (C++), mismo paquete y mismos parámetros |
 | `libgazebo_ros_p3d.so` (`gazebo_plugins`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosP3D`, sistema de gz-sim (C++) |
 | `libgazebo_ros_camera.so` | plugin de cámara | sensor `camera` de gz + `ros_gz_bridge` |
@@ -460,6 +462,10 @@ publicar con el frame del V8.
 
 Dependencia nueva: `sudo apt install ros-jazzy-depth-image-proc`.
 
+`clock_throttle` (C++) también arranca con la simulación: publica `/clock` a 100 Hz, como hacía
+`gazebo_ros` en ROS 1 (`pub_clock_frequency`). Gazebo Harmonic publica el reloj a 1 kHz, y con
+Nav2 hay ~40 nodos suscritos: sin este nodo la máquina se satura (carga 17 en 12 hilos).
+
 ### Verificación (cajas a 1.3 m delante, 0.8 m detrás y 1.05 m a la izquierda)
 
 | Sensor | Medida |
@@ -574,6 +580,64 @@ y `office_laser2`.
 |---|---|---|---|
 | `angle_max` de `/pepper/laser_2` | `angle_min + 488·incremento` | `angle_min + 487·incremento` | En ROS `angle_max` es el ángulo del último rayo. slam_toolbox rechazaba el scan del V8 ("contains 488 range readings, expected 489"); gmapping lo toleraba |
 | Arranque del SLAM | `rosrun` | launch con transiciones lifecycle | En Jazzy slam_toolbox es un nodo lifecycle: sin *configure* + *activate* no publica `/map` |
+
+---
+
+## Fase 7 — Navegación con Nav2
+
+Nav2 sustituye a amcl + move_base del V8. El paquete conserva el nombre del V8, `pepper_nav`,
+y su launch el de `amcl.launch`:
+
+```bash
+# Terminal 1: simulación
+ros2 launch pepper_gazebo_plugin pepper_gazebo_plugin_in_office_CPU.launch.py
+# Terminal 2: localización + navegación + RViz2 (V8: roslaunch pepper_nav amcl.launch)
+ros2 launch pepper_nav amcl.launch.py
+#   con los 3 láseres de Pepper en lugar del hokuyo:
+ros2 launch pepper_nav amcl.launch.py scan:=/pepper/laser_2
+#   con otro mapa:
+ros2 launch pepper_nav amcl.launch.py map:=/ruta/al/mapa.yaml
+```
+
+En RViz2: **2D Pose Estimate** si hace falta corregir la posición inicial (AMCL arranca en
+(0, 0), que es el punto de aparición de Pepper en el mapa de la oficina) y **Nav2 Goal** para
+mandar a Pepper a un punto.
+
+![Nav2 en RViz2](docs/img/fase7_nav2.png)
+
+### Configuración (`pepper_nav/config/nav2_params.yaml`)
+
+Basada en la de ejemplo de Nav2 Jazzy, adaptada a Pepper:
+
+| Qué | Valor | De dónde sale |
+|---|---|---|
+| Modelo de movimiento | AMCL `OmniMotionModel`, MPPI `motion_model: Omni` | La base de Pepper es holonómica |
+| Velocidades | 0.5 m/s en x/y (MPPI), 0.55 m/s y 2.0 rad/s (smoother) | Plugin de la base del V8 |
+| Aceleración | 0.44 m/s², 2.4 rad/s² en el `velocity_smoother` | Plugin de la base del V8 |
+| Ruido de odometría (AMCL) | `alpha1: 0.02645`, `alpha3: 0.02` | V8: "odom_alpha1/3 medidos en el robot real" |
+| Huella | círculo de 0.24 m | Base de Pepper: 0.48 m de ancho |
+| Frames y topics | `base_footprint`, `/pepper/odom`, `/pepper/hokuyo_scan`, salida a `/pepper/cmd_vel` | Nomenclatura del V8 |
+
+### Verificación (oficina, desde el punto de aparición)
+
+| Objetivo | Resultado |
+|---|---|
+| Habitación superior (hay que cruzar la puerta de 0.95 m) | ✅ 33 s |
+| Zona inferior | ✅ 46 s |
+| Vuelta al inicio | ✅ 22 s |
+| Error de AMCL respecto a la posición real | 0.14 m |
+| Con `scan:=/pepper/laser_2` | ✅ los dos objetivos, pero AMCL localiza peor (hasta 0.85 m de error) |
+
+### Problemas encontrados y cómo se resolvieron
+
+| Problema | Causa | Solución |
+|---|---|---|
+| Pepper iba a menos de 0.1 m/s | En MPPI, `ax_max` = 0.44 recorta el ruido de exploración a ±0.02 m/s por paso y el optimizador casi no explora | Aceleraciones por defecto en MPPI; el límite de 0.44 lo aplican el `velocity_smoother` y el plugin de la base |
+| Nav2 lento y saturado | `/clock` a 1 kHz con ~40 suscriptores | `clock_throttle` a 100 Hz, como `gazebo_ros` en ROS 1 |
+| Se atascaba en la puerta | Inflación del costmap local demasiado ancha para un paso de 0.95 m | Radio 0.24 m, inflación local 0.35 m con caída 10, 20 s para progresar |
+
+> El `pepper_nav` del V8 (con `restaurant_world.launch`) se perdió en el zip del tutorial. Cuando
+> aparezca se integrará en este paquete.
 
 ---
 

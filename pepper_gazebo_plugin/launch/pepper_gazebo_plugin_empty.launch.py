@@ -49,6 +49,9 @@ def generate_launch_description():
             [FindPackageShare("pepper_gazebo_plugin"), "config", "pepper_bridge.yaml"])}],
     )
 
+    # V8: gazebo_ros publicaba /clock a 100 Hz (pub_clock_frequency)
+    clock_throttle = Node(package="pepper_gazebo_plugin", executable="clock_throttle")
+
     # V8: <node name="laser_publisher" pkg="pepper_gazebo_plugin" type="laser_publisher.py"/>
     laser_publisher = Node(
         package="pepper_gazebo_plugin", executable="laser_publisher.py",
@@ -90,6 +93,7 @@ def generate_launch_description():
         DeclareLaunchArgument("y", default_value="0.0"),
         gazebo,
         bridge,
+        clock_throttle,
         robot_state_publisher,
         laser_publisher,
         sonar_to_range,
