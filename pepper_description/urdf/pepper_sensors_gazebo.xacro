@@ -1,0 +1,187 @@
+<?xml version="1.0"?>
+<!-- Sensores de Pepper para Gazebo Harmonic. Equivale a los sensores activos de
+     pepperGazeboCPU.xacro del V8, con los mismos links, parámetros y nombres de topic.
+     Cada sensor publica en un topic de Gazebo con el nombre ROS del V8 y ros_gz_bridge lo
+     pasa a ROS 2 con ese mismo nombre (pepper_gazebo_plugin/config/pepper_bridge.yaml).
+     <gz_frame_id> fija el header.frame_id al frame del V8.
+     Los bumpers y la IMU estaban comentados en el V8 y no se incluyen. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- ===== RGB CAMERAS (V8: libgazebo_ros_camera.so) ===== -->
+  <xacro:macro name="pepper_rgb_camera" params="link name topic frame near k1 k2 k3 p1">
+    <gazebo reference="${link}">
+      <sensor type="camera" name="${name}">
+        <always_on>true</always_on>
+        <update_rate>5.0</update_rate>
+        <topic>${topic}/image_raw</topic>
+        <gz_frame_id>${frame}</gz_frame_id>
+        <camera name="${name}">
+          <camera_info_topic>${topic}/camera_info</camera_info_topic>
+          <horizontal_fov>1.0</horizontal_fov>
+          <image>
+            <width>640</width>
+            <height>480</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>${near}</near>
+            <far>500</far>
+          </clip>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.007</stddev>
+          </noise>
+          <distortion>
+            <k1>${k1}</k1>
+            <k2>${k2}</k2>
+            <k3>${k3}</k3>
+            <p1>${p1}</p1>
+            <p2>0.0</p2>
+          </distortion>
+        </camera>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:pepper_rgb_camera link="CameraTop_frame" name="CameraTop"
+    topic="/pepper/camera/front" frame="CameraTop_optical_frame" near="0.3"
+    k1="-0.0545211" k2="0.06919734" k3="-0.0241095" p1="-0.0112245"/>
+  <xacro:pepper_rgb_camera link="CameraBottom_frame" name="CameraBottom"
+    topic="/pepper/camera/bottom" frame="CameraBottom_optical_frame" near="0.05"
+    k1="-0.0648764" k2="0.06125202" k3="0.00382815" p1="-0.00551104"/>
+
+  <!-- ===== DEPTH CAMERA (V8: libgazebo_ros_openni_kinect.so) =====
+       rgbd_camera publica imagen, profundidad, nube de puntos y camera_info. La imagen se
+       publica en ir/image_raw, como el plugin openni del V8. -->
+  <gazebo reference="CameraDepth_frame">
+    <sensor type="rgbd_camera" name="CameraDepth_frame_sensor">
+      <always_on>true</always_on>
+      <update_rate>30.0</update_rate>
+      <topic>/pepper/camera/depth_sensor</topic>
+      <gz_frame_id>CameraDepth_optical_frame</gz_frame_id>
+      <camera name="CameraDepth">
+        <horizontal_fov>${58.0*3.14159265359/180.0}</horizontal_fov>
+        <image>
+          <format>B8G8R8</format>
+          <width>320</width>
+          <height>240</height>
+        </image>
+        <clip>
+          <near>0.4</near>
+          <far>8.0</far>
+        </clip>
+        <depth_camera>
+          <clip>
+            <near>0.4</near>
+            <far>8.0</far>
+          </clip>
+        </depth_camera>
+      </camera>
+    </sensor>
+  </gazebo>
+
+  <!-- ===== SONARS (V8: libgazebo_ros_range.so) =====
+       Gazebo Harmonic no tiene sensor de ultrasonido: se simula con un lidar de 5x5 rayos
+       (el mismo haz del V8) y sonar_to_range lo convierte a sensor_msgs/Range. -->
+  <xacro:macro name="pepper_sonar" params="link name topic">
+    <gazebo reference="${link}">
+      <sensor type="gpu_lidar" name="${name}">
+        <always_on>true</always_on>
+        <update_rate>20</update_rate>
+        <visualize>false</visualize>
+        <topic>/pepper/${topic}_scan</topic>
+        <gz_frame_id>${link}</gz_frame_id>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>5</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.52</min_angle>
+              <max_angle>0.52</max_angle>
+            </horizontal>
+            <vertical>
+              <samples>5</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.52</min_angle>
+              <max_angle>0.52</max_angle>
+            </vertical>
+          </scan>
+          <range>
+            <min>0.02</min>
+            <max>5.0</max>
+            <resolution>0.01</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.05</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:pepper_sonar link="SonarBack_frame" name="SonarBack" topic="sonar_back"/>
+  <xacro:pepper_sonar link="SonarFront_frame" name="SonarFront" topic="sonar_front"/>
+
+  <!-- ===== LASERS (V8: libgazebo_ros_laser.so) =====
+       Los frames del V8 son la proyección a ras de suelo de los láseres reales (a 26 cm e
+       inclinados 20°). En Gazebo Harmonic sólo hay lidar por GPU: cada rayo es un píxel de
+       una imagen de profundidad y, a 1-3 cm del suelo, ese píxel ve el suelo a pocos metros.
+       Por eso el origen del rayo se sube a ~10 cm (<pose> del sensor) manteniendo el frame del
+       V8 (gz_frame_id): el scan 2D es el mismo, pero no se ven obstáculos de menos de 10 cm. -->
+  <xacro:macro name="pepper_laser"
+    params="link name topic samples min_angle max_angle min_range max_range resolution mean visualize dz">
+    <gazebo reference="${link}">
+      <sensor type="gpu_lidar" name="${name}">
+        <pose>0 0 ${dz} 0 0 0</pose>
+        <always_on>true</always_on>
+        <update_rate>6.25</update_rate>
+        <visualize>${visualize}</visualize>
+        <topic>${topic}</topic>
+        <gz_frame_id>${link}</gz_frame_id>
+        <lidar>
+          <scan>
+            <horizontal>
+              <samples>${samples}</samples>
+              <resolution>1</resolution>
+              <min_angle>${min_angle}</min_angle>
+              <max_angle>${max_angle}</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>${min_range}</min>
+            <max>${max_range}</max>
+            <resolution>${resolution}</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>${mean}</mean>
+            <stddev>0.01</stddev>
+          </noise>
+        </lidar>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:pepper_laser link="SurroundingFrontLaser_frame" name="front_laser_sensor"
+    topic="/pepper/scan_front" samples="15" min_angle="-0.5235987755982988"
+    max_angle="0.5235987755982988" min_range="0.3" max_range="7.0" resolution="0.005"
+    mean="0.01" visualize="true" dz="0.066"/>
+  <xacro:pepper_laser link="SurroundingLeftLaser_frame" name="left_laser_sensor"
+    topic="/pepper/scan_left" samples="15" min_angle="-0.5235987755982988"
+    max_angle="0.5235987755982988" min_range="0.3" max_range="7.0" resolution="0.005"
+    mean="0.01" visualize="true" dz="0.066"/>
+  <xacro:pepper_laser link="SurroundingRightLaser_frame" name="right_laser_sensor"
+    topic="/pepper/scan_right" samples="15" min_angle="-0.5235987755982988"
+    max_angle="0.5235987755982988" min_range="0.3" max_range="7.0" resolution="0.005"
+    mean="0.01" visualize="true" dz="0.066"/>
+  <xacro:pepper_laser link="SurroundingFrontLaser_fake_hokuyo_frame" name="fake_hokuyo_laser_sensor"
+    topic="/pepper/hokuyo_scan" samples="720" min_angle="-1.570796"
+    max_angle="1.570796" min_range="0.3" max_range="30.0" resolution="0.01"
+    mean="0.0" visualize="false" dz="0.1"/>
+  <!-- Hokuyo: min_range 0.3 (V8: 0.1). A 10 cm de altura el origen del rayo queda dentro de la
+       base y el lidar ve su propio caparazón (hasta ~0.23 m por delante); con 0.3 esos ecos se
+       descartan. No ve obstáculos a menos de ~0.13 m del frente de la base. -->
+</robot>

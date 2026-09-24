@@ -1,7 +1,8 @@
 """Pepper en Gazebo Harmonic (base de los launch pepper_gazebo_plugin_*.launch del V8).
 
 Carga el modelo, abre el mundo, hace el spawn como "pepper_MP" (igual que el V8),
-arranca los controladores y baja los brazos.
+arranca los controladores, baja los brazos, pasa los sensores a ROS 2 (ros_gz_bridge) y
+lanza laser_publisher.py (/pepper/laser_2) y sonar_to_range (/pepper/sonar_*).
 """
 
 from launch import LaunchDescription
@@ -41,9 +42,22 @@ def generate_launch_description():
                    "-x", LaunchConfiguration("x"), "-y", LaunchConfiguration("y"), "-z", "0.05"],
     )
 
-    clock_bridge = Node(
+    bridge = Node(
         package="ros_gz_bridge", executable="parameter_bridge",
-        arguments=["/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"],
+        parameters=[{"config_file": PathJoinSubstitution(
+            [FindPackageShare("pepper_gazebo_plugin"), "config", "pepper_bridge.yaml"])}],
+    )
+
+    # V8: <node name="laser_publisher" pkg="pepper_gazebo_plugin" type="laser_publisher.py"/>
+    laser_publisher = Node(
+        package="pepper_gazebo_plugin", executable="laser_publisher.py",
+        parameters=[{"use_sim_time": True}],
+    )
+
+    # V8: plugin libgazebo_ros_range.so dentro del modelo
+    sonar_to_range = Node(
+        package="pepper_gazebo_plugin", executable="sonar_to_range",
+        parameters=[{"use_sim_time": True}],
     )
 
     controllers_launch = IncludeLaunchDescription(
@@ -52,14 +66,27 @@ def generate_launch_description():
 
     lower_arms = Node(package="pepper_gazebo_plugin", executable="arms_down.sh", output="screen")
 
+    # V8: el plugin openni publicaba depth/points en CameraDepth_optical_frame.
+    # depth_image_proc hace lo mismo a partir de la imagen de profundidad y su camera_info.
+    depth_points = Node(
+        package="depth_image_proc", executable="point_cloud_xyz_node",
+        remappings=[("image_rect", "/pepper/camera/depth/image_raw"),
+                    ("camera_info", "/pepper/camera/depth/camera_info"),
+                    ("points", "/pepper/camera/depth/points")],
+        parameters=[{"use_sim_time": True}],
+    )
+
     return LaunchDescription([
         DeclareLaunchArgument("world", default_value=PathJoinSubstitution(
             [FindPackageShare("pepper_gazebo_plugin"), "worlds", "empty.world"])),
         DeclareLaunchArgument("x", default_value="0.0"),
         DeclareLaunchArgument("y", default_value="0.0"),
         gazebo,
-        clock_bridge,
+        bridge,
         robot_state_publisher,
+        laser_publisher,
+        sonar_to_range,
+        depth_points,
         spawn,
         # Los controladores se cargan cuando el robot ya existe en Gazebo
         RegisterEventHandler(OnProcessExit(target_action=spawn,

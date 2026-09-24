@@ -24,5 +24,6 @@
     <xacro:include filename="$(find pepper_description)/urdf/pepper_ros2_control.xacro"/>
     <xacro:pepper_ros2_control controllers_file="$(arg controllers_file)"/>
     <xacro:include filename="$(find pepper_description)/urdf/pepper_gazebo.xacro"/>
+    <xacro:include filename="$(find pepper_description)/urdf/pepper_sensors_gazebo.xacro"/>
   </xacro:if>
 </robot>

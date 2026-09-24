@@ -22,8 +22,8 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 1 | Pepper en RViz2 (URDF + mallas, sin Gazebo) | ✅ completada (2026-09-24) |
 | 2 | Articulaciones en Gazebo Harmonic (`gz_ros2_control`) | ✅ completada (2026-09-24) |
 | 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`), `random_driver`, joystick | ✅ completada (2026-09-24) |
-| 4 | Sensores: cámaras, profundidad, láseres, sonares, bumpers | ⏳ siguiente |
-| 5 | Mundos: oficina, museo, museo con personas | pendiente |
+| 4 | Sensores: cámaras, profundidad, láseres, sonares | ✅ completada (2026-09-24) |
+| 5 | Mundos: oficina, museo, museo con personas | ⏳ siguiente |
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | pendiente |
 | 7 | Navegación con Nav2 (reemplaza amcl + move_base) | pendiente |
 | 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | pendiente |
@@ -46,6 +46,10 @@ y se indica el **tipo** equivalente de ROS 2:
 | `pepperTransmission.xacro` | `<transmission>` | bloque `<ros2_control>` (`pepper_ros2_control.xacro`) |
 | `libgazebo_ros_model_velocity.so` (`gazebo_model_velocity_plugin`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosModelVelocity`, sistema de gz-sim (C++), mismo paquete y mismos parámetros |
 | `libgazebo_ros_p3d.so` (`gazebo_plugins`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosP3D`, sistema de gz-sim (C++) |
+| `libgazebo_ros_camera.so` | plugin de cámara | sensor `camera` de gz + `ros_gz_bridge` |
+| `libgazebo_ros_openni_kinect.so` | plugin de profundidad | sensor `rgbd_camera` de gz + `ros_gz_bridge` + `depth_image_proc` (nube) |
+| `libgazebo_ros_laser.so` | plugin de láser | sensor `gpu_lidar` de gz + `ros_gz_bridge` |
+| `libgazebo_ros_range.so` | plugin de sonar | sensor `gpu_lidar` de 5×5 rayos + `sonar_to_range` (C++) |
 
 > En ROS 2 el nodo que publica `/pepper/joint_states` se llama por defecto
 > `joint_state_broadcaster`. En el V9 se llama `joint_state_controller`, como en el V8, pero es
@@ -406,6 +410,78 @@ Las dos odometrías publican a 20 Hz y la TF va de `odom` hasta todos los frames
 | Integración de la odometría | fórmula de arco que suma `vx + vy` | integración con el punto medio del giro | La fórmula original falla al moverse en lateral mientras gira |
 | Fricción de la base (`Tibia`) | por defecto | `mu1 = mu2 = 0` | La base no rueda: se fija su velocidad, como en el V8. Con fricción, el roce con el suelo reduce el giro ~35% |
 | Aplicación del comando | en cada actualización (50 Hz) | en cada paso de física (1 kHz), con el limitador a 50 Hz | Gazebo Harmonic descarta el comando de velocidad tras cada paso |
+
+---
+
+## Fase 4 — Sensores
+
+Los mismos sensores que tenía activos el V8 (`pepperGazeboCPU.xacro`), con **los mismos
+topics, frames y parámetros**. Los bumpers y la IMU estaban comentados en el V8 y tampoco
+están en el V9.
+
+![Sensores de Pepper en RViz2](docs/img/fase4_rviz_sensores.png)
+
+### Ver los sensores
+
+```bash
+# Terminal 1: simulación
+ros2 launch pepper_gazebo_plugin pepper_gazebo_plugin_empty.launch.py
+# Terminal 2: RViz2 (en el V8: rosrun rviz rviz -d `rospack find pepper_gazebo_plugin`/config/pepper_sensors.rviz)
+ros2 launch pepper_gazebo_plugin pepper_sensors_rviz.launch.py
+```
+
+### Topics
+
+| Sensor | Topics | Frame | Frecuencia | Detalles |
+|---|---|---|---|---|
+| Cámara frontal | `/pepper/camera/front/image_raw`, `camera_info` | `CameraTop_optical_frame` | 5 Hz | 640×480, hfov 1.0, distorsión del V8 |
+| Cámara inferior | `/pepper/camera/bottom/image_raw`, `camera_info` | `CameraBottom_optical_frame` | 5 Hz | 640×480, hfov 1.0, distorsión del V8 |
+| Profundidad | `/pepper/camera/depth/image_raw`, `depth/camera_info`, `depth/points`, `/pepper/camera/ir/image_raw` | `CameraDepth_optical_frame` | 30 Hz | 320×240, hfov 58°, 0.4–8 m |
+| Láseres | `/pepper/scan_front`, `scan_left`, `scan_right` | `Surrounding*Laser_frame` | 6.25 Hz | 15 rayos, ±30°, 0.3–7 m |
+| Láser fusionado | `/pepper/laser_2` | `base_footprint` | 6.25 Hz | 488 rayos, ±120° (`laser_publisher.py`) |
+| Hokuyo falso | `/pepper/hokuyo_scan` | `SurroundingFrontLaser_fake_hokuyo_frame` | 6.25 Hz | 720 rayos, ±90°, 0.3–30 m |
+| Sonares | `/pepper/sonar_front`, `sonar_back` (`sensor_msgs/Range`) | `Sonar*_frame` | 20 Hz | 0–5 m, fov 1.05 |
+| Nubes de `laser_publisher` | `/cloud`, `/cloudl`, `/cloudr`, `/cloud_redone`, `/cloud_rereprojected` | — | 6.25 Hz | igual que el V8 |
+
+### Cómo funciona
+
+En el V8 cada sensor tenía un plugin de Gazebo Classic que publicaba directamente en ROS.
+En Gazebo Harmonic los sensores publican en Gazebo y **`ros_gz_bridge`** los pasa a ROS 2
+(`pepper_gazebo_plugin/config/pepper_bridge.yaml`). Cada sensor usa `<gz_frame_id>` para
+publicar con el frame del V8.
+
+| Nodo (lo arranca el launch) | Lenguaje | Qué hace |
+|---|---|---|
+| `laser_publisher.py` | Python (port del V8) | Fusiona los 3 láseres en `/pepper/laser_2` |
+| `sonar_to_range` | C++ | Convierte el haz del sonar (lidar de 5×5 rayos) en `sensor_msgs/Range`: Gazebo Harmonic no tiene sensor de ultrasonido |
+| `depth_image_proc/point_cloud_xyz_node` | C++ (paquete estándar) | Genera `/pepper/camera/depth/points` desde la imagen de profundidad |
+
+Dependencia nueva: `sudo apt install ros-jazzy-depth-image-proc`.
+
+### Verificación (cajas a 1.3 m delante, 0.8 m detrás y 1.05 m a la izquierda)
+
+| Sensor | Medida |
+|---|---|
+| `scan_front` | caja a 1.18 m (11 de 15 rayos, lo que ocupa la caja) |
+| `scan_left` | caja a 0.95 m |
+| `scan_right` | nada (0 rayos): correcto, no hay obstáculo |
+| `laser_2` | caja de delante a 1.30–1.40 m (±20°), caja izquierda a 1.04–1.17 m (+66° a +98°) |
+| `hokuyo_scan` | caja de delante a 1.22 m, caja izquierda a 1.03 m |
+| `sonar_front` / `sonar_back` | 1.26 m / 0.68–0.75 m |
+| `depth/points` | caja a z = 1.29 m en el frame óptico |
+| Cámaras | ven las cajas (captura) |
+
+### Cambios respecto al V8
+
+| Qué | V8 | V9 | Por qué |
+|---|---|---|---|
+| Altura del origen de los láseres | 3.4 cm (hokuyo ~0 cm) | ~10 cm, **mismo frame** | En Harmonic sólo hay lidar por GPU: cada rayo es un píxel con ancho vertical y a ras de suelo ve el suelo a pocos metros. El scan 2D es el mismo, pero no se ven obstáculos de menos de 10 cm |
+| Rango mínimo del hokuyo | 0.1 m | 0.3 m | A 10 cm de altura el origen queda dentro de la base y se ve a sí mismo hasta 0.23 m |
+| Nube de profundidad | plugin openni | `depth_image_proc` | La nube de Gazebo usa ejes x-adelante aunque se etiquete con el frame óptico |
+| Imagen de profundidad | `16UC1` (mm) | `32FC1` (m) | Formato de Gazebo Harmonic; es el estándar de ROS 2 |
+| Sonar | ray + `libgazebo_ros_range.so` | lidar 5×5 + `sonar_to_range` | Gazebo Harmonic no tiene ultrasonido |
+| TF de las ruedas | había que comentar líneas para evitar errores en RViz | las ruedas se publican (ros2_control sólo con estado) | Corrige el "Rviz Model Robot Erro" del V8 |
+| Covarianza en RViz | no se dibujaba | oculta en la config | RViz2 la dibuja por defecto y la del V8 (1e12) llena la pantalla |
 
 ---
 

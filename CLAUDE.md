@@ -54,7 +54,7 @@ Extraído del código original (`pepperGazeboCPU.xacro`, `pepper_trajectory_cont
 | Láser fusionado | `/pepper/laser_2` | lo publica `laser_publisher.py` (portarlo) |
 | Hokuyo falso | `/pepper/hokuyo_scan` | 720 muestras, ±90°, 0.1–30 m |
 | Sonares | `/pepper/sonar_front`, `/pepper/sonar_back` (Range) | 0–5 m, 20 Hz |
-| Bumpers | `/pepper/Bumper/Back`, `/FrontLeft`, `/FrontRight` | en gz el tipo cambia a `ros_gz_interfaces/Contacts` |
+| ~~Bumpers~~ | ~~`/pepper/Bumper/*`~~ | **Comentados en `pepperGazeboCPU.xacro` del V8** (el grep inicial los contó por error): el V8 no los publicaba y el V9 tampoco |
 | Estados | `/pepper/joint_states` | 50 Hz |
 | Controladores | `/pepper/LeftArm_controller`, `/pepper/RightArm_controller`, `/pepper/Head_controller`, `/pepper/Pelvis_controller`, `/pepper/joint_state_controller` | + `LeftHand_controller`/`RightHand_controller` (estaban comentados en V8) |
 | Mover brazos | `/pepper/LeftArm_controller/command` (JointTrajectory) | así lo usa `arms_down.sh` |
@@ -241,8 +241,8 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 | **1. Pepper en RViz2** | Crear `~/pepper_ws`; traer URDF + mallas del repo B y portarlo a Jazzy, **ya con namespace `/pepper`** y frames del V8. `ros2_control_plugin:=fake`, sin Gazebo. | Pepper completo en RViz2, TF sin errores (incl. `WheelB/FL/FR_link`, `l/r_gripper`), `/pepper/joint_states` publicándose. | ✅ 2026-09-24 (ver abajo) |
 | **2. Articulaciones en Harmonic** | Spawn en gz-sim + `gz_ros2_control` con controladores **ya renombrados** (`LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller`). Portar `arms_down.sh`. | `ros2 topic pub /pepper/LeftArm_controller/command ...` baja el brazo; `rqt_joint_trajectory_controller` funciona. | ✅ 2026-09-24 (ver abajo) |
 | **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | ✅ 2026-09-24 |
-| **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | ⏳ siguiente |
-| **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | pendiente |
+| **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | ✅ 2026-09-24 (ver abajo) |
+| **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | ⏳ siguiente |
 | **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver`. | pendiente |
 | **7. Navegación** | Nav2 (sustituye amcl + move_base) sobre el mapa de la Fase 6. | Objetivo enviado desde RViz2 alcanzado. | pendiente |
 | **8. Percepción** | `yolo_ros` (YOLOv8/v11) sobre `/pepper/camera/front/image_raw`. | Detecta personas en el mundo oficina, como la figura del V8. | pendiente |
@@ -308,6 +308,28 @@ Cambios respecto al plan del 2026-09-22:
 - Para matar procesos: buscar los PID primero y matarlos por número en otro comando. Un
   patrón de `pkill`/`awk` en la misma línea que un texto que lo contenga mata al propio shell.
 
+**Resultado de la Fase 4 (sensores, 2026-09-24):**
+- Sensores en `pepper_description/urdf/pepper_sensors_gazebo.xacro` (los activos del V8:
+  CameraTop, CameraBottom, CameraDepth, SonarFront/Back, 3 láseres, fake hokuyo). Cada uno
+  publica en Gazebo con el nombre ROS del V8 y `<gz_frame_id>` con el frame del V8.
+  `pepper_gazebo_plugin/config/pepper_bridge.yaml` los pasa a ROS 2.
+- Nodos nuevos en `pepper_gazebo_plugin`: `laser_publisher.py` (port del V8, → `/pepper/laser_2`
+  y `/cloud*`), `sonar_to_range` (C++, lidar 5×5 → `sensor_msgs/Range`; gz no tiene
+  ultrasonido) y `depth_image_proc/point_cloud_xyz_node` (→ `/pepper/camera/depth/points`).
+- **La nube de puntos del rgbd_camera de gz usa ejes x-adelante** aunque se etiquete con el
+  frame óptico: no se usa. La genera depth_image_proc (instalado: `ros-jazzy-depth-image-proc`).
+- **gpu_lidar a ras de suelo ve el suelo** (cada rayo es un píxel con ancho vertical): los
+  láseres del V8 están a 3.4 cm y el hokuyo a ~0.6 cm. Se sube el origen del rayo con `<pose>`
+  del sensor a ~10 cm (dz=0.066 láseres, 0.1 hokuyo) sin cambiar el frame. A 10 cm el hokuyo
+  (x=0.056) queda dentro de la base y se ve a sí mismo hasta 0.23 m: min_range 0.3 (V8 0.1).
+- `rgbd_camera` ignora `<camera_info_topic>`: publica en `<topic>/camera_info`.
+- Profundidad en `32FC1` (metros); el V8 usaba `16UC1` (`useDepth16UC1Format`).
+- Las ruedas se añadieron a ros2_control **sólo con estado**, así `joint_state_controller`
+  publica WheelB/FL/FR y sus TF existen (el "Rviz Model Robot Erro" del V8, que allí se
+  arreglaba comentando líneas).
+- RViz2: `pepper_gazebo_plugin/config/pepper_sensors.rviz` (mismos displays que el del V8;
+  covarianza de odometría oculta porque el V8 usa 1e12). Launch `pepper_sensors_rviz.launch.py`.
+
 **Pendiente de respuesta del autor del V8:**
 - ¿Tiene los archivos del V8 que no están en el repo? (`museum.world`,
   `museum_with_persons_robots`, `museum_with_people_moving.world`, launch, zip de
@@ -325,7 +347,7 @@ El paper de Heliyon pide cita explícita (`@article{sekkat2024beyond, ...}`).
 Máquina migrada a Ubuntu 24.04 nativo; repo clonado en
 `~/Proyectos-Robotica/Pepper-in-ROS2-Jazzy-and-Ubuntu-24`. Workspace `~/pepper_ws` creado; `src/pepper` es un symlink a este repo.
 Plan por fases reescrito el 2026-09-24 (§7). **Fase 0 completada** el 2026-09-24.
-**Fases 0 a 3 completadas** el 2026-09-24. Siguiente paso: **Fase 4** (sensores).
+**Fases 0 a 4 completadas** el 2026-09-24. Siguiente paso: **Fase 5** (mundos).
 
 `README.md` es el borrador vivo del Tutorial V9: **actualizarlo al cerrar cada fase**
 (estado + pasos reproducibles + equivalencias con el V8). Petición explícita del autor.

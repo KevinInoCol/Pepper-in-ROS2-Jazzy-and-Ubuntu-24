@@ -1,0 +1,86 @@
+# ros_gz_bridge: topics de Gazebo -> ROS 2 con los nombres del V8.
+# En el V8 cada plugin de Gazebo Classic publicaba directamente en ROS; en Gazebo Harmonic
+# los sensores publican en Gazebo y este puente los pasa a ROS 2.
+
+- ros_topic_name: /clock
+  gz_topic_name: /clock
+  ros_type_name: rosgraph_msgs/msg/Clock
+  gz_type_name: gz.msgs.Clock
+  direction: GZ_TO_ROS
+
+# --- Cámara frontal (CameraTop) ---
+- ros_topic_name: /pepper/camera/front/image_raw
+  gz_topic_name: /pepper/camera/front/image_raw
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+- ros_topic_name: /pepper/camera/front/camera_info
+  gz_topic_name: /pepper/camera/front/camera_info
+  ros_type_name: sensor_msgs/msg/CameraInfo
+  gz_type_name: gz.msgs.CameraInfo
+  direction: GZ_TO_ROS
+
+# --- Cámara inferior (CameraBottom) ---
+- ros_topic_name: /pepper/camera/bottom/image_raw
+  gz_topic_name: /pepper/camera/bottom/image_raw
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+- ros_topic_name: /pepper/camera/bottom/camera_info
+  gz_topic_name: /pepper/camera/bottom/camera_info
+  ros_type_name: sensor_msgs/msg/CameraInfo
+  gz_type_name: gz.msgs.CameraInfo
+  direction: GZ_TO_ROS
+
+# --- Cámara de profundidad (CameraDepth, rgbd_camera) ---
+- ros_topic_name: /pepper/camera/ir/image_raw
+  gz_topic_name: /pepper/camera/depth_sensor/image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+- ros_topic_name: /pepper/camera/depth/image_raw
+  gz_topic_name: /pepper/camera/depth_sensor/depth_image
+  ros_type_name: sensor_msgs/msg/Image
+  gz_type_name: gz.msgs.Image
+  direction: GZ_TO_ROS
+# La nube de puntos NO se toma de Gazebo (usa ejes x-adelante, no los del frame óptico):
+# la genera depth_image_proc desde depth/image_raw, como el plugin openni del V8.
+- ros_topic_name: /pepper/camera/depth/camera_info
+  gz_topic_name: /pepper/camera/depth_sensor/camera_info
+  ros_type_name: sensor_msgs/msg/CameraInfo
+  gz_type_name: gz.msgs.CameraInfo
+  direction: GZ_TO_ROS
+
+# --- Láseres ---
+- ros_topic_name: /pepper/scan_front
+  gz_topic_name: /pepper/scan_front
+  ros_type_name: sensor_msgs/msg/LaserScan
+  gz_type_name: gz.msgs.LaserScan
+  direction: GZ_TO_ROS
+- ros_topic_name: /pepper/scan_left
+  gz_topic_name: /pepper/scan_left
+  ros_type_name: sensor_msgs/msg/LaserScan
+  gz_type_name: gz.msgs.LaserScan
+  direction: GZ_TO_ROS
+- ros_topic_name: /pepper/scan_right
+  gz_topic_name: /pepper/scan_right
+  ros_type_name: sensor_msgs/msg/LaserScan
+  gz_type_name: gz.msgs.LaserScan
+  direction: GZ_TO_ROS
+- ros_topic_name: /pepper/hokuyo_scan
+  gz_topic_name: /pepper/hokuyo_scan
+  ros_type_name: sensor_msgs/msg/LaserScan
+  gz_type_name: gz.msgs.LaserScan
+  direction: GZ_TO_ROS
+
+# --- Sonares (haz de 5x5 rayos; sonar_to_range los convierte a sensor_msgs/Range) ---
+- ros_topic_name: /pepper/sonar_front_scan
+  gz_topic_name: /pepper/sonar_front_scan
+  ros_type_name: sensor_msgs/msg/LaserScan
+  gz_type_name: gz.msgs.LaserScan
+  direction: GZ_TO_ROS
+- ros_topic_name: /pepper/sonar_back_scan
+  gz_topic_name: /pepper/sonar_back_scan
+  ros_type_name: sensor_msgs/msg/LaserScan
+  gz_type_name: gz.msgs.LaserScan
+  direction: GZ_TO_ROS

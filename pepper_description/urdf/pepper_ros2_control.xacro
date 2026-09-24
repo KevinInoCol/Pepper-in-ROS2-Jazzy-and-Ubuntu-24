@@ -1,7 +1,8 @@
 <?xml version="1.0"?>
 <!-- ros2_control para Gazebo Harmonic. Sustituye a pepperGazebo*.xacro (gazebo_ros_control)
-     y pepperTransmission*.xacro del V8. Las ruedas no van aquí: la base se mueve con su
-     propio plugin (Fase 3), como en el V8. -->
+     y pepperTransmission*.xacro del V8. Las ruedas sólo tienen interfaces de estado: la base
+     se mueve con su propio plugin (Fase 3), como en el V8, pero así joint_state_controller
+     publica WheelB/FL/FR y existen sus TF (en el V8 había que comentarlas para RViz). -->
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
 
   <xacro:macro name="pepper_joint" params="name initial:=0.0">
@@ -40,6 +41,19 @@
       <xacro:pepper_joint name="RElbowRoll"/>
       <xacro:pepper_joint name="RWristYaw"/>
       <xacro:pepper_joint name="RHand" initial="0.5"/>
+      <!-- Ruedas: sólo estado -->
+      <joint name="WheelB">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name="WheelFL">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name="WheelFR">
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
     </ros2_control>
 
     <gazebo>
