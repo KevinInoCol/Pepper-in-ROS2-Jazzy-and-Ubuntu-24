@@ -180,14 +180,14 @@ Resultado:
 - **Tutorial V8** (ROS 1): este repositorio, `Pepper Tutorial V8.docx.pdf`.
 - [`awesomebytes/pepper_virtual`](https://github.com/awesomebytes/pepper_virtual) (rama
   `simulation_that_works`) y [`marco-quiroz/pepper_robot`](https://github.com/marco-quiroz/pepper_robot):
-  la simulación ROS 1 del V8, **referencia de la nomenclatura**.
+  la simulación ROS 1 del V8: **referencia de la nomenclatura y base del URDF** (`pepper_description`).
 - [`HibaSekkat/pepper_ign_moveit2`](https://github.com/HibaSekkat/pepper_ign_moveit2):
-  Pepper en ROS 2 + Ignition con MoveIt 2, **base del código** (URDF, mallas, ros2_control).
+  Pepper en ROS 2 + Ignition con MoveIt 2: de aquí vienen las **mallas** y las referencias de ros2_control y MoveIt.
   Sekkat et al., *"Beyond simulation: ... Pepper open-source digital twin"*, Heliyon 10(14), 2024.
 - [`tuncismail/pepper-robot-ros2-gazebo-simulation`](https://github.com/tuncismail/pepper-robot-ros2-gazebo-simulation):
   referencia de parámetros de sensores y base.
 
 ## Licencias
 
-El código de las referencias es BSD-3 (Sekkat) y MIT (tuncismail). Las **mallas de Pepper
+El `pepper_description` del V8 es Apache-2.0. El código de las referencias es BSD-3 (Sekkat) y MIT (tuncismail). Las **mallas de Pepper
 son de Aldebaran/SoftBank bajo CC-BY-NC-ND**: sólo uso no comercial y con atribución.
