@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<!-- ros2_control para Gazebo Harmonic. Sustituye a pepperGazebo*.xacro (gazebo_ros_control)
+     y pepperTransmission*.xacro del V8. Las ruedas no van aquí: la base se mueve con su
+     propio plugin (Fase 3), como en el V8. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:macro name="pepper_joint" params="name initial:=0.0">
+    <joint name="${name}">
+      <command_interface name="position"/>
+      <state_interface name="position">
+        <param name="initial_value">${initial}</param>
+      </state_interface>
+      <state_interface name="velocity"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="pepper_ros2_control" params="controllers_file">
+    <ros2_control name="PepperGazeboSystem" type="system">
+      <hardware>
+        <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+      </hardware>
+      <!-- Cabeza -->
+      <xacro:pepper_joint name="HeadYaw"/>
+      <xacro:pepper_joint name="HeadPitch"/>
+      <!-- Pelvis -->
+      <xacro:pepper_joint name="HipRoll"/>
+      <xacro:pepper_joint name="HipPitch"/>
+      <xacro:pepper_joint name="KneePitch"/>
+      <!-- Brazo izquierdo -->
+      <xacro:pepper_joint name="LShoulderPitch"/>
+      <xacro:pepper_joint name="LShoulderRoll"/>
+      <xacro:pepper_joint name="LElbowYaw"/>
+      <xacro:pepper_joint name="LElbowRoll"/>
+      <xacro:pepper_joint name="LWristYaw"/>
+      <xacro:pepper_joint name="LHand" initial="0.5"/>
+      <!-- Brazo derecho -->
+      <xacro:pepper_joint name="RShoulderPitch"/>
+      <xacro:pepper_joint name="RShoulderRoll"/>
+      <xacro:pepper_joint name="RElbowYaw"/>
+      <xacro:pepper_joint name="RElbowRoll"/>
+      <xacro:pepper_joint name="RWristYaw"/>
+      <xacro:pepper_joint name="RHand" initial="0.5"/>
+    </ros2_control>
+
+    <gazebo>
+      <plugin filename="gz_ros2_control-system" name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+        <parameters>${controllers_file}</parameters>
+        <ros>
+          <namespace>/pepper</namespace>
+        </ros>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+</robot>

@@ -64,8 +64,11 @@ Articulaciones por controlador (**idénticas en el repo B**, no hay que renombra
   `right_arm_controller`→`RightArm_controller`, `head_controller`→`Head_controller`,
   `torso_controller`→`Pelvis_controller`, `left/right_hand_controller`→`LeftHand/RightHand_controller`.
   Actualizar también `moveit_controller_manager.yaml` para que MoveIt los encuentre.
-- En ROS 2 el JointTrajectoryController escucha en `~/joint_trajectory`, no en `~/command`:
-  remapear `~/joint_trajectory:=~/command` al lanzarlo (verificar la forma exacta en Jazzy).
+- En ROS 2 el JointTrajectoryController escucha en `~/joint_trajectory`, no en `~/command`.
+  **Hecho:** el spawner lo remapea con `--controller-ros-args "-r ~/joint_trajectory:=~/command"`
+  (`pepper_control_trajectory_all.launch.py`). rqt_joint_trajectory_controller tiene
+  `joint_trajectory` fijo en el código: se lanza con `pepper_control/launch/rqt_joint_trajectory_controller.launch.py`,
+  que remapea sus publishers a `/command` y `robot_description` a `/pepper/robot_description`.
 - **Decidido (2026-09-24):** el controlador se llama `joint_state_controller` (nombre V8),
   con tipo `joint_state_broadcaster/JointStateBroadcaster` (su equivalente en ROS 2).
   Documentado en la tabla de nomenclatura del README.
@@ -227,8 +230,8 @@ ROS 1 del §2.1 se aplica **desde la Fase 1** (no se renombra al final).
 |---|---|---|---|
 | **0. Entorno** | Instalar paquetes pendientes (§3). | `glxinfo -B` muestra la RTX 4060; `gz sim shapes.sdf` fluido. | ✅ 2026-09-24: paquetes instalados, renderer NVIDIA RTX 4060 (OpenGL 4.6), `gz sim gui` en GPU, RTF 1.00 |
 | **1. Pepper en RViz2** | Crear `~/pepper_ws`; traer URDF + mallas del repo B y portarlo a Jazzy, **ya con namespace `/pepper`** y frames del V8. `ros2_control_plugin:=fake`, sin Gazebo. | Pepper completo en RViz2, TF sin errores (incl. `WheelB/FL/FR_link`, `l/r_gripper`), `/pepper/joint_states` publicándose. | ✅ 2026-09-24 (ver abajo) |
-| **2. Articulaciones en Harmonic** | Spawn en gz-sim + `gz_ros2_control` con controladores **ya renombrados** (`LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller`). Portar `arms_down.sh`. | `ros2 topic pub /pepper/LeftArm_controller/command ...` baja el brazo; `rqt_joint_trajectory_controller` funciona. | ⏳ siguiente |
-| **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | pendiente |
+| **2. Articulaciones en Harmonic** | Spawn en gz-sim + `gz_ros2_control` con controladores **ya renombrados** (`LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller`). Portar `arms_down.sh`. | `ros2 topic pub /pepper/LeftArm_controller/command ...` baja el brazo; `rqt_joint_trajectory_controller` funciona. | ✅ 2026-09-24 (ver abajo) |
+| **3. Base holonómica + odometría** | Equivalente a `gazebo_model_velocity_plugin` (que mueve el modelo, no simula ruedas): evaluar `VelocityControl` + `OdometryPublisher` de gz-sim. Límites y ruido del V8 (0.55 m/s, 2 rad/s, ruido 0.02 / 0.02645). Portar `random_driver.cpp` (rclcpp) y `joy_pepper.py`. | `rqt_robot_steering` sobre `/pepper/cmd_vel` mueve en x, y, yaw; `/pepper/odom` + TF y `/pepper/odom_groundtruth` publicándose. | ⏳ siguiente |
 | **4. Sensores** | `<sensor>` gz-sim + `ros_gz_bridge` con nombres y parámetros del §2.1 (repo C solo como apoyo): cámaras front/bottom → profundidad → 3 láseres + hokuyo → sonares → bumpers. Portar `laser_publisher.py` (`/pepper/laser_2`). Convertir `pepper_sensors.rviz` a RViz2. | `ros2 topic list` coincide con el `rostopic list` del V8; la vista de sensores en RViz2 equivale a la del V8. | pendiente |
 | **5. Mundos** | Oficina (`simple_office_with_people.world`, está en `pepper_virtual`) → museo → museo con personas y robots. SDF Classic → SDF Harmonic. | Los launch con los nombres del V8 (`pepper_gazebo_plugin_museum...`) abren el mundo con Pepper. | pendiente |
 | **6. SLAM** | `slam_toolbox` sobre `/pepper/laser_2` o `/pepper/hokuyo_scan`, parámetros equivalentes a los de gmapping del V8. | Mapa del museo guardado con `map_saver`. | pendiente |
@@ -257,6 +260,20 @@ Cambios respecto al plan del 2026-09-22:
   el URDF del V8. `pepperGazebo*.xacro` y `pepperTransmission*.xacro` del V8 no se portan.
 - Dedos opcionales (`fingers:=false` por defecto, como `pepper_robot_CPU.xacro` del V8).
 
+**Resultado de la Fase 2 (2026-09-24):**
+- Paquetes `pepper_control` y `pepper_gazebo_plugin` (nombres del V8). Launch:
+  `pepper_gazebo_plugin_empty.launch.py`, que hace el spawn como `pepper_MP` y lanza `arms_down.sh`.
+- `pepper_description/urdf/pepper_ros2_control.xacro` (se activa con `gazebo:=true`): 17 joints
+  (cabeza, pelvis, brazos y manos) con interfaz de posición. Las ruedas quedan fuera.
+  Plugin `gz_ros2_control-system` con `<ros><namespace>/pepper</namespace></ros>`.
+- Un hook de entorno de `pepper_description` añade `share/` a `GZ_SIM_RESOURCE_PATH`, para que
+  Gazebo resuelva `package://pepper_description/meshes/...`.
+- **DART aborta** (`dLDLTRemove`) con la masa del V8 en `l/r_gripper` (2e-06). Se subió a
+  0.05 kg. `LHand`/`RHand` arrancan en 0.5 (su límite es 0.02–0.98).
+- Verificación de GUI sin xdotool: clics y arrastres con `libXtst` vía ctypes, y capturas con
+  `Gdk.pixbuf_get_from_window` (scripts temporales de la sesión; se rehacen en pocas líneas). Para parar la simulación no usar `pkill -f <patrón>` dentro de un comando
+  que contenga ese patrón, porque se mata a sí mismo.
+
 **Pendiente de respuesta del autor del V8:**
 - ¿Tiene los archivos del V8 que no están en el repo? (`museum.world`,
   `museum_with_persons_robots`, `museum_with_people_moving.world`, launch, zip de
@@ -273,7 +290,7 @@ El paper de Heliyon pide cita explícita (`@article{sekkat2024beyond, ...}`).
 Máquina migrada a Ubuntu 24.04 nativo; repo clonado en
 `~/Proyectos-Robotica/Pepper-in-ROS2-Jazzy-and-Ubuntu-24`. Workspace `~/pepper_ws` creado; `src/pepper` es un symlink a este repo.
 Plan por fases reescrito el 2026-09-24 (§7). **Fase 0 completada** el 2026-09-24.
-**Fase 1 completada** el 2026-09-24. Siguiente paso: **Fase 2**.
+**Fases 1 y 2 completadas** el 2026-09-24. Siguiente paso: **Fase 3** (base holonómica).
 
 `README.md` es el borrador vivo del Tutorial V9: **actualizarlo al cerrar cada fase**
 (estado + pasos reproducibles + equivalencias con el V8). Petición explícita del autor.

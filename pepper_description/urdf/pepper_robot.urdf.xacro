@@ -5,6 +5,9 @@
 
   <!-- Dedos: el V8 los deja fuera en simulación (pepper_robot_CPU.xacro) -->
   <xacro:arg name="fingers" default="false"/>
+  <!-- Gazebo Harmonic: añade ros2_control (lo pasa pepper_gazebo_plugin) -->
+  <xacro:arg name="gazebo" default="false"/>
+  <xacro:arg name="controllers_file" default=""/>
 
   <xacro:include filename="$(find pepper_description)/urdf/pepper_visual_collisions.xacro"/>
   <xacro:include filename="$(find pepper_description)/urdf/pepper_head.xacro"/>
@@ -15,5 +18,10 @@
   <xacro:include filename="$(find pepper_description)/urdf/pepper_wheels.xacro"/>
   <xacro:if value="$(arg fingers)">
     <xacro:include filename="$(find pepper_description)/urdf/pepper_fingers.xacro"/>
+  </xacro:if>
+
+  <xacro:if value="$(arg gazebo)">
+    <xacro:include filename="$(find pepper_description)/urdf/pepper_ros2_control.xacro"/>
+    <xacro:pepper_ros2_control controllers_file="$(arg controllers_file)"/>
   </xacro:if>
 </robot>

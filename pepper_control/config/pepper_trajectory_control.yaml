@@ -1,0 +1,60 @@
+# Equivalente ROS 2 de pepper_control/config/pepper_trajectory_control.yaml (V8).
+# Mismos nombres de controladores y articulaciones. Todo cuelga del namespace /pepper.
+/**/controller_manager:
+  ros__parameters:
+    update_rate: 100
+
+    # V8: joint_state_controller/JointStateController
+    joint_state_controller:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    # V8: velocity_controllers/JointTrajectoryController
+    LeftArm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    RightArm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    Head_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    Pelvis_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    # Comentados en el V8; en el V9 están disponibles
+    LeftHand_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+    RightHand_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+/**/LeftArm_controller:
+  ros__parameters:
+    joints: [LShoulderPitch, LShoulderRoll, LElbowYaw, LElbowRoll, LWristYaw]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/**/RightArm_controller:
+  ros__parameters:
+    joints: [RShoulderPitch, RShoulderRoll, RElbowYaw, RElbowRoll, RWristYaw]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/**/Head_controller:
+  ros__parameters:
+    joints: [HeadYaw, HeadPitch]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/**/Pelvis_controller:
+  ros__parameters:
+    joints: [HipRoll, HipPitch, KneePitch]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/**/LeftHand_controller:
+  ros__parameters:
+    joints: [LHand]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+
+/**/RightHand_controller:
+  ros__parameters:
+    joints: [RHand]
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]

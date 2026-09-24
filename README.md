@@ -20,8 +20,8 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 |---|---|---|
 | 0 | Entorno: paquetes, GPU, Gazebo | ✅ completada (2026-09-24) |
 | 1 | Pepper en RViz2 (URDF + mallas, sin Gazebo) | ✅ completada (2026-09-24) |
-| 2 | Articulaciones en Gazebo Harmonic (`gz_ros2_control`) | ⏳ siguiente |
-| 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`) | pendiente |
+| 2 | Articulaciones en Gazebo Harmonic (`gz_ros2_control`) | ✅ completada (2026-09-24) |
+| 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`) | ⏳ siguiente |
 | 4 | Sensores: cámaras, profundidad, láseres, sonares, bumpers | pendiente |
 | 5 | Mundos: oficina, museo, museo con personas | pendiente |
 | 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | pendiente |
@@ -40,6 +40,10 @@ y se indica el **tipo** equivalente de ROS 2:
 |---|---|---|
 | `/pepper/joint_state_controller` | `joint_state_controller/JointStateController` | `joint_state_broadcaster/JointStateBroadcaster` |
 | `/pepper/LeftArm_controller`, `RightArm_controller`, `Head_controller`, `Pelvis_controller` | `velocity_controllers/JointTrajectoryController` | `joint_trajectory_controller/JointTrajectoryController` |
+| `/pepper/LeftHand_controller`, `RightHand_controller` | (comentados en el V8) | `joint_trajectory_controller/JointTrajectoryController` |
+| `/pepper/<X>_controller/command` | topic nativo del controlador | el nativo en ROS 2 es `~/joint_trajectory`; se remapea a `~/command` |
+| `gazebo_ros_control` (`libgazebo_ros_control.so`) | plugin de Gazebo Classic | `gz_ros2_control::GazeboSimROS2ControlPlugin` |
+| `pepperTransmission.xacro` | `<transmission>` | bloque `<ros2_control>` (`pepper_ros2_control.xacro`) |
 
 > En ROS 2 el nodo que publica `/pepper/joint_states` se llama por defecto
 > `joint_state_broadcaster`. En el V9 se llama `joint_state_controller`, como en el V8, pero es
@@ -186,8 +190,105 @@ Resultado:
   RViz (`WheelB/FL/FR_link`, `l_gripper`, `r_gripper`) **funcionan sin tocar nada**.
 - RViz2: *Global Status: Ok*.
 
+![Pepper en RViz2](docs/img/fase1_rviz2.png)
+
 > Las mallas de Hip, Pelvis y Torso se ven más blancas que el resto: al corregirles el
 > origen en el V8 (con meshlab) perdieron los materiales. Es estético y no afecta a nada.
+
+---
+
+## Fase 2 — Pepper en Gazebo Harmonic moviendo articulaciones
+
+Equivale a `roslaunch pepper_gazebo_plugin pepper_gazebo_plugin_in_office_CPU.launch` del V8,
+por ahora en un mundo vacío (los mundos llegan en la Fase 5).
+
+### Paquetes nuevos (nombres del V8)
+
+| Paquete | Contenido | Equivale en el V8 a |
+|---|---|---|
+| `pepper_control` | `config/pepper_trajectory_control.yaml`, `launch/pepper_control_trajectory_all.launch.py`, `launch/rqt_joint_trajectory_controller.launch.py` | `pepper_virtual/pepper_control` |
+| `pepper_gazebo_plugin` | `launch/pepper_gazebo_plugin_empty.launch.py`, `worlds/empty.world`, `scripts/arms_down.sh` | `pepper_virtual/pepper_gazebo_plugin` |
+
+En `pepper_description` se añadió `urdf/pepper_ros2_control.xacro`, que sustituye a
+`pepperGazebo*.xacro` y a `pepperTransmission*.xacro`. Se activa con `gazebo:=true`.
+
+### Lanzar
+
+```bash
+ros2 launch pepper_gazebo_plugin pepper_gazebo_plugin_empty.launch.py
+```
+
+El launch hace lo mismo que el del V8:
+1. Abre Gazebo con el mundo.
+2. Hace el spawn del robot con el nombre de modelo **`pepper_MP`**.
+3. Arranca los controladores (`pepper_control_trajectory_all.launch.py`).
+4. Baja los brazos (`arms_down.sh`).
+
+### Controladores
+
+```bash
+ros2 control list_controllers -c /pepper/controller_manager
+```
+
+```
+joint_state_controller joint_state_broadcaster/JointStateBroadcaster          active
+LeftArm_controller     joint_trajectory_controller/JointTrajectoryController  active
+RightArm_controller    joint_trajectory_controller/JointTrajectoryController  active
+Head_controller        joint_trajectory_controller/JointTrajectoryController  active
+Pelvis_controller      joint_trajectory_controller/JointTrajectoryController  active
+LeftHand_controller    joint_trajectory_controller/JointTrajectoryController  active
+RightHand_controller   joint_trajectory_controller/JointTrajectoryController  active
+```
+
+### Mover el cuerpo desde terminal (como en el V8)
+
+```bash
+# Cabeza
+ros2 topic pub --once /pepper/Head_controller/command trajectory_msgs/msg/JointTrajectory \
+  "{joint_names: [HeadYaw, HeadPitch], points: [{positions: [0.8, -0.3], time_from_start: {sec: 1}}]}"
+
+# Brazo derecho
+ros2 topic pub --once /pepper/RightArm_controller/command trajectory_msgs/msg/JointTrajectory \
+  "{joint_names: [RShoulderPitch, RShoulderRoll, RElbowYaw, RElbowRoll, RWristYaw],
+    points: [{positions: [-1.0, -0.3, 1.2, 1.0, 0.0], time_from_start: {sec: 2}}]}"
+```
+
+![Pepper en Gazebo Harmonic](docs/img/fase2_gazebo.png)
+
+### Mover el cuerpo con rqt (como en el V8)
+
+En el V8: `rosrun rqt_joint_trajectory_controller rqt_joint_trajectory_controller`. En el V9:
+
+```bash
+ros2 launch pepper_control rqt_joint_trajectory_controller.launch.py
+```
+
+Se elige `/pepper/controller_manager` y un controlador, se pulsa el botón de encendido y se
+mueven los sliders.
+
+> **Por qué un launch y no `ros2 run`:** en ROS 2 este plugin publica siempre en
+> `<controlador>/joint_trajectory` y lee `robot_description` sin namespace. El launch lo
+> remapea a `/pepper/<X>_controller/command` y a `/pepper/robot_description`, para que el V9
+> mantenga un único topic de comandos, el mismo del V8.
+
+![rqt_joint_trajectory_controller con los controladores del V8](docs/img/fase2_rqt_controladores.png)
+
+### Verificación
+
+- Los 7 controladores activos, con los nombres del V8.
+- Tras `arms_down.sh`, las articulaciones quedan en las posiciones del V8
+  (`LShoulderPitch 1.45`, `LShoulderRoll 0.10`, `LWristYaw -1.0`...).
+- `Head_controller/command` y `RightArm_controller/command` mueven las articulaciones al
+  valor pedido. `rqt_joint_trajectory_controller` mueve `LShoulderPitch` de 1.45 a -1.77.
+- Factor de tiempo real: 1.00. Pepper queda de pie en su sitio.
+
+### Cambios respecto al modelo del V8 (necesarios en Gazebo Harmonic)
+
+| Qué | V8 | V9 | Por qué |
+|---|---|---|---|
+| Masa/inercia de `l_gripper`, `r_gripper` | 2e-06 kg / 1.1e-09 | 0.05 kg / 1e-05 | El motor de física de Harmonic (DART) **aborta** (`dLDLTRemove` en el solver LCP) con cuerpos tan ligeros colgando de un joint móvil. En Gazebo Classic (ODE) funcionaba |
+| Posición inicial de `LHand`, `RHand` | 0 | 0.5 | El límite del joint es 0.02–0.98; empezar en 0 lo deja fuera de rango |
+| Ruedas en ros2_control | — | no incluidas | La base se mueve con su propio plugin, como en el V8 (Fase 3) |
 
 ---
 
