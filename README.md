@@ -24,8 +24,8 @@ mundos de museo, teleoperación, SLAM, navegación y YOLO), pero en ROS 2.
 | 3 | Base holonómica + odometría (`/pepper/cmd_vel`, `/pepper/odom`), `random_driver`, joystick | ✅ completada (2026-09-24) |
 | 4 | Sensores: cámaras, profundidad, láseres, sonares | ✅ completada (2026-09-24) |
 | 5 | Mundos: oficina ✅ · museo, museo con personas y robots, museo con gente en movimiento: **pendientes** (a la espera de los archivos del V8) | 🟡 oficina lista |
-| 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | ⏳ siguiente |
-| 7 | Navegación con Nav2 (reemplaza amcl + move_base) | pendiente |
+| 6 | SLAM con `slam_toolbox` (reemplaza gmapping) | ✅ completada (2026-09-24) |
+| 7 | Navegación con Nav2 (reemplaza amcl + move_base) | ⏳ siguiente |
 | 8 | Percepción con `yolo_ros` (reemplaza darknet_ros) | pendiente |
 | 9 | Opcionales: MoveIt 2, gente dinámica, Pepper real | opcional |
 
@@ -44,6 +44,8 @@ y se indica el **tipo** equivalente de ROS 2:
 | `/pepper/<X>_controller/command` | topic nativo del controlador | el nativo en ROS 2 es `~/joint_trajectory`; se remapea a `~/command` |
 | `gazebo_ros_control` (`libgazebo_ros_control.so`) | plugin de Gazebo Classic | `gz_ros2_control::GazeboSimROS2ControlPlugin` |
 | `pepperTransmission.xacro` | `<transmission>` | bloque `<ros2_control>` (`pepper_ros2_control.xacro`) |
+| `slam_gmapping` (`rosrun gmapping slam_gmapping scan:=...`) | nodo ROS 1 | `slam_toolbox` (`pepper_slam_toolbox.launch.py scan:=...`) |
+| `map_server map_saver -f` | nodo ROS 1 | `nav2_map_server map_saver_cli -f` |
 | `libgazebo_ros_model_velocity.so` (`gazebo_model_velocity_plugin`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosModelVelocity`, sistema de gz-sim (C++), mismo paquete y mismos parámetros |
 | `libgazebo_ros_p3d.so` (`gazebo_plugins`) | plugin de Gazebo Classic (C++) | `gazebo_model_velocity_plugin::GazeboRosP3D`, sistema de gz-sim (C++) |
 | `libgazebo_ros_camera.so` | plugin de cámara | sensor `camera` de gz + `ros_gz_bridge` |
@@ -518,6 +520,60 @@ Cambios necesarios para Gazebo Harmonic:
 `museum.world`, `museum_with_persons_robots`, `museum_with_people_moving.world` (actores con
 `actor_collisions`) y `museum_for_agents_clusters.world` (pedsim) se portarán cuando estén
 disponibles los archivos del V8.
+
+---
+
+## Fase 6 — SLAM 2D con slam_toolbox
+
+`slam_toolbox` sustituye a gmapping (ROS 1), que no existe en ROS 2. Se usa igual que en el
+V8: se lanza el SLAM, se mueve a Pepper por el entorno (rqt_robot_steering, joystick o
+`random_driver`) y se guarda el mapa.
+
+```bash
+# Terminal 1: simulación
+ros2 launch pepper_gazebo_plugin pepper_gazebo_plugin_in_office_CPU.launch.py
+# Terminal 2: SLAM (V8: rosrun gmapping slam_gmapping scan:=/pepper/laser_2)
+ros2 launch pepper_gazebo_plugin pepper_slam_toolbox.launch.py
+#   con el hokuyo (V8: rosrun gmapping slam_gmapping scan:=/pepper/hokuyo_scan):
+ros2 launch pepper_gazebo_plugin pepper_slam_toolbox.launch.py scan:=/pepper/hokuyo_scan max_laser_range:=20.0
+# Terminal 3: RViz2 con el mapa (V8: pepper_sensors_map.rviz)
+ros2 launch pepper_gazebo_plugin pepper_sensors_rviz.launch.py config:=pepper_sensors_map.rviz
+# Terminal 4: mover a Pepper
+ros2 run rqt_robot_steering rqt_robot_steering        # topic /pepper/cmd_vel
+# Guardar el mapa (V8: rosrun map_server map_saver -f <archivo>)
+ros2 run nav2_map_server map_saver_cli -f ~/pepper_ws/src/pepper/pepper_gazebo_plugin/map/office
+```
+
+Parámetros de gmapping del V8 trasladados (`config/pepper_slam_toolbox.yaml`):
+
+| gmapping (V8) | slam_toolbox (V9) |
+|---|---|
+| `linearUpdate 0.2` | `minimum_travel_distance: 0.2` |
+| `angularUpdate 0.2` | `minimum_travel_heading: 0.2` |
+| `temporalUpdate 0.5` | `minimum_time_interval: 0.5` |
+| `delta` (0.05 por defecto) | `resolution: 0.05` |
+| `particles 160`, `xmin/xmax/ymin/ymax ±10`, `srr/srt/str/stt` | sin equivalente: slam_toolbox es un SLAM de grafo (sin partículas) y el mapa crece solo |
+
+### Resultados en la oficina (misma ruta de 19 puntos, ~200 s)
+
+| `/pepper/laser_2` (3 láseres, 45 puntos, 7 m) | `/pepper/hokuyo_scan` (720 rayos, 30 m) |
+|---|---|
+| ![Mapa con laser_2](docs/img/fase6_mapa_laser2.png) | ![Mapa con hokuyo](docs/img/fase6_mapa_hokuyo.png) |
+| Reconocible, pero con paredes punteadas y algo de deriva | Limpio: paredes rectas, puerta, muebles y personas |
+
+Los dos mapas están en `pepper_gazebo_plugin/map/`: `office` (hokuyo, el que usa la Fase 7)
+y `office_laser2`.
+
+> **Recomendación:** `laser_2` reproduce el sensor real de Pepper (tres láseres de 15 rayos);
+> el hokuyo es el sensor "falso" que el V8 añadía justamente para mapear mejor. Para hacer
+> mapas, el hokuyo; para ver cómo se comportaría el robot real, `laser_2`.
+
+### Cambios respecto al V8
+
+| Qué | V8 | V9 | Por qué |
+|---|---|---|---|
+| `angle_max` de `/pepper/laser_2` | `angle_min + 488·incremento` | `angle_min + 487·incremento` | En ROS `angle_max` es el ángulo del último rayo. slam_toolbox rechazaba el scan del V8 ("contains 488 range readings, expected 489"); gmapping lo toleraba |
+| Arranque del SLAM | `rosrun` | launch con transiciones lifecycle | En Jazzy slam_toolbox es un nodo lifecycle: sin *configure* + *activate* no publica `/map` |
 
 ---
 

@@ -13,7 +13,10 @@ Igual que en el V8:
     /cloudl y /cloudr (láser izquierdo y derecho en su frame), /cloud_redone (laser_2
     reproyectado) y /cloud_rereprojected (depuración del V8).
 
-Cambios respecto al V8: los parámetros de ddynamic_reconfigure (half_max_angle) son
+Cambios respecto al V8: angle_max es el ángulo del último rayo, angle_min + 487·incremento
+(el V8 publicaba angle_min + 488·incremento, que no cumple la convención de LaserScan:
+slam_toolbox lo rechaza con "contains 488 range readings, expected 489"; gmapping lo
+toleraba). Los parámetros de ddynamic_reconfigure (half_max_angle) son
 parámetros de ROS 2; el sincronizador es aproximado (las tres medidas llegan en el mismo paso
 de simulación, pero así no se pierde ninguna); sin los print de depuración.
 """
@@ -105,11 +108,12 @@ class LaserPublisher(Node):
         header.frame_id = BASE_FRAME
         self.pc_pub.publish(point_cloud2.create_cloud_xyz32(header, cloud))
 
-        ranges, angle_min, angle_max, angle_increment = self.pc_to_laser(cloud, header)
+        ranges, angle_min, _, angle_increment = self.pc_to_laser(cloud, header)
         msg = LaserScan()
         msg.header = header
         msg.angle_min = angle_min
-        msg.angle_max = angle_max
+        # Convención de LaserScan: ángulo del último rayo (el V8 usaba el extremo del sector)
+        msg.angle_max = angle_min + (NUM_RAYS - 1) * angle_increment
         msg.angle_increment = angle_increment
         msg.range_min = 0.1
         msg.range_max = 7.0

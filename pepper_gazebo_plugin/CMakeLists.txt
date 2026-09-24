@@ -14,7 +14,7 @@ add_executable(sonar_to_range src/sonar_to_range.cpp)
 target_link_libraries(sonar_to_range rclcpp::rclcpp ${sensor_msgs_TARGETS})
 install(TARGETS sonar_to_range DESTINATION lib/${PROJECT_NAME})
 
-install(DIRECTORY config launch models worlds DESTINATION share/${PROJECT_NAME})
+install(DIRECTORY config launch map models worlds DESTINATION share/${PROJECT_NAME})
 install(PROGRAMS
   scripts/arms_down.sh
   scripts/joy_pepper.py
